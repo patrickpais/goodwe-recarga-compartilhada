@@ -1,0 +1,1400 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GoodWe · Recarga Compartilhada — Protótipo</title>
+<style>
+  :root{
+    --backdrop:#1a1d24; --backdrop2:#22262f; --cap-ink:#e8eaef; --cap-muted:#9aa1ad;
+    --red:#f5333f; --red-dark:#d31e2c; --ink:#131c2e; --muted:#7c8494; --faint:#aeb4c0;
+    --bg:#efeff1; --card:#fafafb; --line:#e4e5e9;
+    --blue:#3577f1; --blue-bg:#dee9fc; --good:#149d68; --good-bg:#dcf3ea;
+    --warn:#b97a08; --warn-bg:#faeed3;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --backdrop:#e3e4e8; --backdrop2:#d6d8de; --cap-ink:#1c2333; --cap-muted:#5d6572; }
+  }
+  :root[data-theme="dark"]{ --backdrop:#1a1d24; --backdrop2:#22262f; --cap-ink:#e8eaef; --cap-muted:#9aa1ad; }
+  :root[data-theme="light"]{ --backdrop:#e3e4e8; --backdrop2:#d6d8de; --cap-ink:#1c2333; --cap-muted:#5d6572; }
+
+  *{box-sizing:border-box; margin:0}
+  html,body{height:100%}
+  body{
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Quicksand", "Baloo 2", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(120% 90% at 50% 0%, var(--backdrop2), var(--backdrop));
+    color:var(--cap-ink);
+    display:flex; align-items:center; justify-content:center; gap:48px;
+    padding:32px 20px; min-height:100vh; flex-wrap:wrap;
+  }
+
+  /* ---------- side panel (demo script) ---------- */
+  .side{max-width:300px; display:flex; flex-direction:column; gap:14px}
+  .side h1{font-size:1.35rem; line-height:1.25; text-wrap:balance}
+  .side h1 em{color:var(--red); font-style:normal}
+  .side p{font-size:.85rem; line-height:1.55; color:var(--cap-muted)}
+  .side .steps{display:flex; flex-direction:column; gap:8px; font-size:.8rem}
+  .side .steps div{display:flex; gap:10px; align-items:flex-start; line-height:1.45}
+  .side .steps b{color:var(--red); font-variant-numeric:tabular-nums; flex:none}
+  .jump{display:flex; gap:8px; flex-wrap:wrap}
+  .jump button{
+    font:inherit; font-size:.78rem; font-weight:700; cursor:pointer;
+    padding:8px 14px; border-radius:99px; border:1.5px solid var(--red);
+    background:transparent; color:var(--cap-ink);
+  }
+  .jump button:hover{background:var(--red); color:#fff}
+  .jump button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
+  .tagline{font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--cap-muted)}
+
+  /* ---------- phone ---------- */
+  .phone{
+    width:392px; height:800px; flex:none; position:relative;
+    background:var(--bg); border-radius:52px; overflow:hidden;
+    border:10px solid #0b0d12; box-shadow:0 30px 80px rgba(0,0,0,.45);
+  }
+  .statusbar{
+    position:absolute; top:0; left:0; right:0; height:44px; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 24px; font-size:.82rem; font-weight:800; color:var(--ink);
+    pointer-events:none;
+  }
+  .notch{position:absolute; top:9px; left:50%; transform:translateX(-50%);
+    width:118px; height:28px; background:#0b0d12; border-radius:20px; z-index:41}
+
+  .screen{
+    position:absolute; inset:0; padding:56px 18px 96px; overflow-y:auto;
+    display:none; background:var(--bg); color:var(--ink);
+    scrollbar-width:none;
+  }
+  .screen::-webkit-scrollbar{display:none}
+  .screen.active{display:block}
+  .screen.dark-scr{background:#0e1118; color:#f2f3f6}
+  .screen.no-tab{padding-bottom:24px}
+
+  /* ---------- app primitives ---------- */
+  .h-title{font-size:1.5rem; font-weight:800; letter-spacing:-.01em}
+  .subhead{font-size:1.15rem; font-weight:800; margin:22px 0 12px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px}
+  .btn{
+    display:block; width:100%; font:inherit; font-weight:800; font-size:1.05rem;
+    background:var(--red); color:#fff; border:none; border-radius:99px;
+    padding:15px; cursor:pointer; text-align:center;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn:focus-visible{outline:3px solid var(--red-dark); outline-offset:2px}
+  .btn.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line); font-size:.92rem; padding:12px}
+  .dark-scr .btn.ghost{color:#f2f3f6; border-color:#333a48}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:.75rem; font-weight:700;
+    padding:5px 12px; border-radius:99px}
+  .chip.blue{background:var(--blue-bg); color:var(--blue)}
+  .chip.good{background:var(--good-bg); color:var(--good)}
+  .chip.warn{background:var(--warn-bg); color:var(--warn)}
+  .chip.new{background:var(--red); color:#fff; font-style:italic}
+  .muted{color:var(--muted); font-size:.82rem}
+  .row{display:flex; align-items:center; gap:10px}
+  .spread{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .backbar{display:flex; align-items:center; gap:10px; margin-bottom:16px}
+  .backbar button{font:inherit; border:none; background:var(--card); border:1px solid var(--line);
+    width:38px; height:38px; border-radius:12px; cursor:pointer; font-size:1.05rem; color:var(--ink); font-weight:800}
+  .backbar .h-title{font-size:1.2rem}
+  .money{font-variant-numeric:tabular-nums}
+
+  /* tab bar */
+  .tabbar{
+    position:absolute; bottom:0; left:0; right:0; z-index:30;
+    background:#fff; border-radius:34px 34px 0 0; padding:12px 10px 20px;
+    display:none; justify-content:space-around;
+    box-shadow:0 -8px 24px rgba(19,28,46,.08);
+  }
+  .tabbar.visible{display:flex}
+  .tab{font:inherit; border:none; background:none; cursor:pointer; text-align:center;
+    color:#9aa0ac; font-size:.78rem; font-weight:700; display:flex; flex-direction:column; gap:3px; align-items:center}
+  .tab svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+  .tab.on{color:var(--red)}
+  .tab.on span{color:var(--ink); font-weight:800}
+
+  /* services grid */
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+  .tile{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px 8px 14px;
+    display:flex; flex-direction:column; align-items:center; gap:10px; font-size:.86rem; font-weight:700;
+    text-align:center; cursor:default; position:relative; color:var(--ink)}
+  .tile svg{width:30px; height:30px; stroke:var(--ink); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+  .tile .accent{stroke:var(--red)}
+  .tile.tap{cursor:pointer}
+  .tile .flag{position:absolute; top:-8px; right:-6px}
+
+  /* login */
+  .logo{font-size:2.1rem; font-weight:900; letter-spacing:.04em; color:var(--red); text-align:center;
+    text-shadow:0 0 14px rgba(245,51,63,.35)}
+  .slogan{text-align:center; font-weight:800; font-size:1.15rem; margin:6px 0 34px}
+  .field{background:#fff; border:1px solid var(--line); border-radius:99px; padding:15px 20px;
+    font-size:.95rem; color:var(--muted); margin-bottom:14px; display:flex; justify-content:space-between}
+
+  /* home */
+  .home-head{background:linear-gradient(180deg,#dbe7f7 0%, var(--bg) 90%); margin:-56px -18px 0; padding:64px 18px 8px}
+  .house-scene{margin:6px 0 14px}
+  .banner{
+    background:linear-gradient(115deg, #2a1518, #451b20 55%, #6d222b);
+    color:#fff; border-radius:22px; padding:18px; cursor:pointer; position:relative; overflow:hidden;
+  }
+  .banner:hover{filter:brightness(1.06)}
+  .banner .bolt{position:absolute; right:-12px; bottom:-18px; font-size:5.2rem; opacity:.16}
+  .banner h3{font-size:1.12rem; margin:6px 0 4px}
+  .banner p{font-size:.8rem; color:#f3c9cc; line-height:1.4}
+
+  .dev-card{display:flex; gap:14px; align-items:center; margin-top:12px}
+  .dev-ic{width:52px; height:64px; background:#fff; border:1px solid var(--line); border-radius:12px;
+    display:flex; align-items:center; justify-content:center; flex:none}
+
+  /* role cards */
+  .role-card{display:flex; gap:14px; align-items:center; cursor:pointer; margin-bottom:12px}
+  .role-card:hover{border-color:var(--red)}
+  .role-ic{width:54px; height:54px; border-radius:16px; background:#fdeaec; color:var(--red);
+    display:flex; align-items:center; justify-content:center; flex:none; font-size:1.5rem}
+  .role-card h3{font-size:1.02rem}
+  .role-card p{font-size:.78rem; color:var(--muted); line-height:1.4; margin-top:2px}
+  .role-card .arr{margin-left:auto; color:var(--faint); font-weight:800}
+
+  /* host */
+  .switch{position:relative; width:50px; height:30px; flex:none}
+  .switch input{opacity:0; width:100%; height:100%; position:absolute; cursor:pointer; z-index:2}
+  .switch i{position:absolute; inset:0; background:#d6d9df; border-radius:99px; transition:.2s}
+  .switch i::after{content:""; position:absolute; top:3px; left:3px; width:24px; height:24px;
+    background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .switch input:checked + i{background:var(--good)}
+  .switch input:checked + i::after{left:23px}
+  .stepper{display:flex; align-items:center; gap:14px}
+  .stepper button{font:inherit; width:36px; height:36px; border-radius:12px; border:1px solid var(--line);
+    background:#fff; font-size:1.2rem; font-weight:800; cursor:pointer; color:var(--ink)}
+  .stepper .val{font-size:1.3rem; font-weight:800; min-width:110px; text-align:center}
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px}
+  .stat h4{font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em}
+  .stat .n{font-size:1.45rem; font-weight:800; margin-top:4px}
+
+  /* chart */
+  .chart{margin-top:14px}
+  .chart .bars{display:flex; align-items:flex-end; gap:8px; height:110px; border-bottom:1px solid var(--line); padding:0 2px}
+  .chart .bcol{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; height:100%}
+  .chart .bar{width:100%; max-width:26px; background:#e9b6ba; border-radius:4px 4px 0 0}
+  .chart .bar.hot{background:var(--red)}
+  .chart .bval{font-size:.62rem; font-weight:800; color:var(--ink)}
+  .chart .days{display:flex; gap:8px; padding:6px 2px 0}
+  .chart .days span{flex:1; text-align:center; font-size:.68rem; color:var(--muted); font-weight:700}
+
+  .sess{display:flex; justify-content:space-between; padding:12px 2px; border-bottom:1px solid var(--line); font-size:.85rem}
+  .sess:last-child{border-bottom:none}
+  .sess b{display:block; font-size:.88rem}
+  .sess .muted{font-size:.74rem}
+  .sess .amt{font-weight:800; color:var(--good); align-self:center}
+
+  /* map */
+  .mapbox{border-radius:20px; overflow:hidden; border:1px solid var(--line); margin-bottom:14px}
+  .charger-item{display:flex; gap:12px; cursor:pointer; margin-bottom:10px}
+  .charger-item.off{opacity:.55; cursor:default}
+  .pin-ic{width:44px; height:44px; border-radius:14px; background:#fdeaec; display:flex; align-items:center;
+    justify-content:center; flex:none; font-size:1.2rem}
+  .charger-item h3{font-size:.95rem}
+  .charger-item .meta{font-size:.76rem; color:var(--muted); margin-top:2px}
+  .charger-item .right{margin-left:auto; text-align:right; display:flex; flex-direction:column; gap:6px; align-items:flex-end}
+  .price-tag{font-weight:800; font-size:.9rem}
+
+  /* scan */
+  .viewport{position:relative; margin:26px auto; width:250px; height:250px; border-radius:24px;
+    display:flex; align-items:center; justify-content:center; background:#161a23}
+  .viewport::before{content:""; position:absolute; inset:-4px; border-radius:28px;
+    background:
+      linear-gradient(var(--red),var(--red)) top left/44px 4px,
+      linear-gradient(var(--red),var(--red)) top left/4px 44px,
+      linear-gradient(var(--red),var(--red)) top right/44px 4px,
+      linear-gradient(var(--red),var(--red)) top right/4px 44px,
+      linear-gradient(var(--red),var(--red)) bottom left/44px 4px,
+      linear-gradient(var(--red),var(--red)) bottom left/4px 44px,
+      linear-gradient(var(--red),var(--red)) bottom right/44px 4px,
+      linear-gradient(var(--red),var(--red)) bottom right/4px 44px;
+    background-repeat:no-repeat}
+  .scanline{position:absolute; left:10px; right:10px; height:2px; background:var(--red); top:12px;
+    box-shadow:0 0 12px var(--red); animation:scan 2.4s ease-in-out infinite}
+  @keyframes scan{0%,100%{top:12px} 50%{top:236px}}
+  @media (prefers-reduced-motion: reduce){ .scanline{animation:none; top:124px} }
+
+  /* payment */
+  .payopt{display:flex; align-items:center; gap:12px; padding:14px 4px; border-bottom:1px solid var(--line); cursor:pointer}
+  .payopt:last-child{border-bottom:none}
+  .payopt .dot{width:20px; height:20px; border-radius:50%; border:2px solid var(--faint); flex:none}
+  .payopt.sel .dot{border:6px solid var(--red)}
+  .payopt b{font-size:.92rem}
+  .payopt .muted{font-size:.74rem}
+
+  /* charging ring */
+  .ringwrap{display:flex; justify-content:center; margin:18px 0 6px; position:relative}
+  .ringwrap .center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center}
+  .ringwrap .pct{font-size:2.3rem; font-weight:800; font-variant-numeric:tabular-nums}
+  .ringwrap .lbl{font-size:.72rem; color:#8d94a2; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
+  .cstats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px}
+  .cstat{background:#161a23; border:1px solid #262c39; border-radius:16px; padding:12px 14px}
+  .cstat h4{font-size:.66rem; color:#8d94a2; font-weight:700; text-transform:uppercase; letter-spacing:.06em}
+  .cstat .n{font-size:1.2rem; font-weight:800; margin-top:3px; font-variant-numeric:tabular-nums}
+
+  /* receipt */
+  .bigcheck{width:74px; height:74px; border-radius:50%; background:var(--good-bg); color:var(--good);
+    display:flex; align-items:center; justify-content:center; font-size:2.2rem; margin:10px auto 14px}
+  .rc-line{display:flex; justify-content:space-between; font-size:.88rem; padding:9px 0; border-bottom:1px dashed var(--line)}
+  .rc-line:last-child{border-bottom:none}
+  .rc-line b{font-variant-numeric:tabular-nums}
+  .stars{display:flex; justify-content:center; gap:8px; font-size:1.7rem; margin:14px 0}
+  .stars button{font:inherit; font-size:inherit; background:none; border:none; cursor:pointer; color:#d5d8de}
+  .stars button.on{color:#f2b01e}
+
+  /* wallbox sim */
+  .wallbox{width:210px; margin:14px auto; background:linear-gradient(160deg,#fdfdfe,#e8e9ee);
+    border:1px solid var(--line); border-radius:26px; padding:20px 18px 26px; box-shadow:0 16px 34px rgba(19,28,46,.16)}
+  .wallbox .brand{text-align:center; font-weight:900; letter-spacing:.06em; color:var(--red); font-size:.8rem}
+  .led{height:8px; border-radius:99px; margin:12px 0; background:#c9cdd6}
+  .led.idle{background:var(--good); box-shadow:0 0 10px var(--good)}
+  .led.busy{background:var(--blue); box-shadow:0 0 10px var(--blue); animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  @media (prefers-reduced-motion: reduce){ .led.busy{animation:none} }
+  .qrpanel{background:#fff; border:1px solid var(--line); border-radius:14px; padding:10px; display:flex; justify-content:center}
+  .wallbox .socket{width:56px; height:56px; border-radius:50%; background:#2a2f3b; margin:16px auto 0;
+    border:6px solid #3c4353}
+  .wb-status{text-align:center; font-weight:800; margin-top:14px; font-size:1rem}
+
+  .note{font-size:.72rem; color:var(--muted); text-align:center; line-height:1.5; margin-top:14px}
+
+  /* add charger / viability */
+  .label-caps{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em}
+  .field-input{border:none; outline:none; background:transparent; font:inherit; color:inherit; width:100%}
+  .field-input::placeholder{color:var(--muted)}
+  .srcopt{cursor:pointer; border:1.5px solid transparent}
+  .srcopt.sel{border-color:var(--red); background:#fdeaec}
+  .split-bar-track{display:flex; height:14px; border-radius:8px; overflow:hidden; background:var(--line)}
+  .split-fill{height:100%; transition:width .2s}
+  .split-fill.solar{background:var(--good)}
+  .split-fill.grid{background:var(--blue)}
+  .split-legend{display:flex; justify-content:space-between; margin-top:8px; font-size:.78rem; color:var(--muted)}
+  .split-legend b{color:var(--ink); font-variant-numeric:tabular-nums}
+  .dot-solar,.dot-grid{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px}
+  .dot-solar{background:var(--good)}
+  .dot-grid{background:var(--blue)}
+
+  @media (max-width: 860px){
+    body{gap:24px}
+    .side{max-width:392px; order:2}
+  }
+</style>
+
+<aside class="side">
+  <span class="tagline">Protótipo acadêmico · dados simulados</span>
+  <h1>Recarga <em>Compartilhada</em><br>no app GoodWe</h1>
+  <p>Marketplace peer-to-peer de recarga para veículos elétricos usando as wallboxes GoodWe já instaladas. Sem custo de equipamento para o usuário nem para a GoodWe — apenas uma nova seção no app, com taxa de 10% por transação.</p>
+  <div class="steps">
+    <div><b>1.</b><span>Toque em <strong>Login</strong> para entrar no app.</span></div>
+    <div><b>2.</b><span><strong>Anfitrião:</strong> cadastre um carregador com QR Code, veja a Análise de Viabilidade e acompanhe os ganhos.</span></div>
+    <div><b>3.</b><span><strong>Motorista:</strong> encontre um carregador no mapa, leia o QR Code, pague e acompanhe a recarga ao vivo.</span></div>
+    <div><b>4.</b><span>Ao concluir, o recibo divide o valor: 90% para o anfitrião, 10% para a GoodWe.</span></div>
+  </div>
+  <div class="jump">
+    <button data-go="scr-host">Ir ao fluxo do Anfitrião</button>
+    <button data-go="scr-map">Ir ao fluxo do Motorista</button>
+    <button data-go="scr-add-charger">Cadastrar carregador</button>
+  </div>
+</aside>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar"><span>15:02</span><span>5G ▮▮▮ 🔋42</span></div>
+
+  <!-- ============ LOGIN ============ -->
+  <section class="screen no-tab active" id="scr-login">
+    <div style="padding-top:60px">
+      <div class="logo">GOODWE</div>
+      <div class="slogan">We, the Smart Energy Innovator</div>
+      <div class="field"><span>pa**********@gmail.com</span></div>
+      <div class="field"><span>••••••••••</span><span>👁</span></div>
+      <div class="spread" style="font-size:.82rem; margin:2px 6px 0">
+        <span style="font-weight:700">☑ Lembrar senha</span>
+        <span class="muted">Esqueci a senha</span>
+      </div>
+      <div style="margin-top:150px">
+        <button class="btn" data-go="scr-home">Login</button>
+        <p style="text-align:center; font-weight:700; margin-top:16px; font-size:.92rem">Criar conta</p>
+        <p class="note">Protótipo de faculdade — nenhum dado é real.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOME ============ -->
+  <section class="screen" id="scr-home">
+    <div class="home-head">
+      <div class="spread">
+        <span class="h-title">Pais’s Home</span>
+        <span class="muted" style="font-size:1.1rem">💬 ⋯</span>
+      </div>
+      <div style="margin-top:8px"><span class="chip blue">💬 Em construção</span></div>
+      <div style="margin-top:10px; font-weight:800">⛅ 23 °C</div>
+      <div class="house-scene">
+        <svg viewBox="0 0 340 150" role="img" aria-label="Casa com painéis solares e wallbox carregando um carro elétrico">
+          <rect x="0" y="128" width="340" height="3" rx="1.5" fill="#d8dbe2"/>
+          <polygon points="60,70 150,28 240,70" fill="#eceef2" stroke="#d0d4dc"/>
+          <rect x="72" y="70" width="156" height="58" fill="#fff" stroke="#d0d4dc"/>
+          <rect x="84" y="58" width="40" height="20" transform="rotate(-25 84 58)" fill="#2b57a8" rx="2"/>
+          <rect x="128" y="38" width="40" height="20" transform="rotate(-25 128 38)" fill="#2b57a8" rx="2"/>
+          <rect x="96" y="88" width="26" height="40" fill="#f2c94c" opacity=".55" rx="2"/>
+          <rect x="168" y="82" width="40" height="30" fill="#cfe0f5" rx="2"/>
+          <rect x="248" y="84" width="14" height="26" rx="4" fill="#fdfdfe" stroke="#c9cdd6"/>
+          <rect x="252" y="89" width="6" height="5" rx="1" fill="#f5333f"/>
+          <path d="M262 96 Q 276 100 282 112" stroke="#3c4353" fill="none" stroke-width="2.5"/>
+          <rect x="272" y="108" width="52" height="20" rx="9" fill="#e8f0fb" stroke="#b9cbe6"/>
+          <circle cx="284" cy="128" r="6" fill="#3c4353"/><circle cx="314" cy="128" r="6" fill="#3c4353"/>
+          <text x="290" y="103" font-size="11" font-weight="800" fill="#149d68">⚡</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="banner" data-go="scr-role" role="button" tabindex="0">
+      <span class="chip new">Novo</span>
+      <h3>Recarga Compartilhada</h3>
+      <p>Seu carregador pode gerar renda — ou te salvar na rua. Toque para conhecer.</p>
+      <span class="bolt">⚡</span>
+    </div>
+
+    <div class="card dev-card">
+      <div class="dev-ic">
+        <svg width="26" height="38" viewBox="0 0 26 38"><rect x="1" y="1" width="24" height="36" rx="7" fill="none" stroke="#131c2e" stroke-width="2"/><rect x="8" y="8" width="10" height="8" rx="2" fill="#f5333f"/><circle cx="13" cy="26" r="4" fill="none" stroke="#131c2e" stroke-width="2"/></svg>
+      </div>
+      <div>
+        <b>Wallbox GoodWe HCA 7 kW</b>
+        <div class="muted">Garagem · Tipo 2 · AC</div>
+        <div style="margin-top:6px"><span class="chip good" id="home-dev-chip">● Online</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DISPOSITIVOS ============ -->
+  <section class="screen" id="scr-devices">
+    <div class="h-title" style="margin-bottom:16px">Lista de dispositivos</div>
+    <div id="my-devices-list"></div>
+    <div class="card" data-go="scr-add-charger" role="button" tabindex="0" style="margin-top:12px; text-align:center; border-style:dashed; color:var(--muted); cursor:pointer">
+      <div style="font-size:1.4rem; font-weight:800">＋</div>
+      <div class="muted">Adicionar dispositivo</div>
+    </div>
+  </section>
+
+  <!-- ============ SERVIÇOS ============ -->
+  <section class="screen" id="scr-services">
+    <div class="subhead" style="margin-top:0">Serviços</div>
+    <div class="grid3">
+      <div class="tile"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path class="accent" d="M8 8h8M8 12h8M8 16h5"/></svg>Notícias GoodWe</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2"/><path class="accent" d="M9 11h6M9 15h6"/></svg>Comunicados</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0"/><rect x="3" y="13" width="4" height="6" rx="2"/><rect x="17" y="13" width="4" height="6" rx="2"/><path class="accent" d="M12 21h4"/></svg>Suporte Técnico</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><path class="accent" d="M4 14l4-8 4 10 4-8 4 6"/></svg>Fale conosco</div>
+    </div>
+
+    <div class="subhead">Ferramentas</div>
+    <div class="grid3">
+      <div class="tile"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path class="accent" d="M9 12l2 2 4-4"/></svg>Garantia</div>
+      <div class="tile tap" data-go="scr-role" role="button" tabindex="0">
+        <span class="flag chip new">Novo</span>
+        <svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="3"/><path class="accent" d="M12 8l-2 4h4l-2 4"/></svg>
+        Recarga Compartilhada
+      </div>
+    </div>
+
+    <div class="subhead">Configuração</div>
+    <div class="grid3">
+      <div class="tile"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path class="accent" d="M15 6h4v4"/></svg>Criar usina</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><path class="accent" d="M10 14a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1.5 1.5"/><path d="M14 10a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1.5-1.5"/></svg>Acesso local</div>
+    </div>
+  </section>
+
+  <!-- ============ CONTA ============ -->
+  <section class="screen" id="scr-account">
+    <div style="width:88px; height:88px; border-radius:50%; background:#fdeaec; color:var(--red);
+      display:flex; align-items:center; justify-content:center; font-size:1.9rem; font-weight:900; margin:14px 0 12px">PP</div>
+    <div class="row"><span class="h-title">Patrick Pais</span>
+      <span class="chip" style="background:linear-gradient(90deg,#8c1220,#c21a2c); color:#fff">Proprietário</span></div>
+    <p class="muted" style="margin:8px 0 20px">pa**********@gmail.com &nbsp;›</p>
+    <div class="card" style="padding:4px 16px">
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Detalhes do APP</b><span><span class="chip new">Novo</span> ›</span></div>
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Carteira · Recarga Compartilhada</b><span class="muted money" id="wallet-line">R$ 612,40 ›</span></div>
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Configuração</b><span class="muted">›</span></div>
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Notificações</b><span class="muted">›</span></div>
+      <div class="spread" style="padding:15px 0"><b>Segurança da Conta</b><span class="muted">›</span></div>
+    </div>
+  </section>
+
+  <!-- ============ ESCOLHA DE PERFIL ============ -->
+  <section class="screen no-tab" id="scr-role">
+    <div class="backbar"><button data-go="scr-home" aria-label="Voltar">‹</button><span class="h-title">Recarga Compartilhada</span></div>
+    <div class="banner" style="cursor:default; margin-bottom:16px">
+      <h3 style="margin-top:0">Toda wallbox é um posto ⚡</h3>
+      <p>Conectamos donos de carregadores GoodWe a motoristas próximos. Sem hardware novo, sem mensalidade.</p>
+      <span class="bolt">⚡</span>
+    </div>
+    <div class="card role-card" data-go="scr-host" role="button" tabindex="0">
+      <div class="role-ic">🏠</div>
+      <div><h3>Sou Anfitrião</h3><p>Tenho um carregador GoodWe e quero ganhar dinheiro nas horas em que ele fica parado.</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card" data-go="scr-map" role="button" tabindex="0">
+      <div class="role-ic">🚗</div>
+      <div><h3>Sou Motorista</h3><p>Quero encontrar um ponto de recarga perto de mim, pagar pelo app e carregar agora.</p></div>
+      <span class="arr">›</span>
+    </div>
+    <p class="note">A GoodWe recebe 10% por transação. O anfitrião define o preço e os horários.</p>
+  </section>
+
+  <!-- ============ ANFITRIÃO ============ -->
+  <section class="screen no-tab" id="scr-host">
+    <div class="backbar"><button data-go="scr-role" aria-label="Voltar">‹</button><span class="h-title">Meu Ponto de Recarga</span></div>
+
+    <div class="card" data-go="scr-add-charger" role="button" tabindex="0" style="margin-bottom:16px; text-align:center; border-style:dashed; color:var(--muted); cursor:pointer">
+      <div style="font-size:1.4rem; font-weight:800">＋</div>
+      <div class="muted">Cadastrar novo carregador</div>
+    </div>
+
+    <div class="subhead" style="margin-top:0">Meus carregadores</div>
+    <div id="my-chargers-list"></div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Visível ao público</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Aplica a todos os seus carregadores</div>
+        </div>
+        <label class="switch" aria-label="Visível ao público">
+          <input type="checkbox" id="pub-toggle" checked>
+          <i></i>
+        </label>
+      </div>
+      <div style="margin-top:10px"><span class="chip good" id="host-pub-chip">● Visível ao público</span></div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="spread">
+        <div>
+          <h4 style="font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em">Preço por kWh</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Sugestão da região: R$ 1,80 – R$ 2,20</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepPrice" data-dir="-1" aria-label="Diminuir preço">−</button>
+          <span class="val money" id="price-val">R$ 1,89</span>
+          <button data-action="stepPrice" data-dir="1" aria-label="Aumentar preço">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><h4>Ganhos hoje</h4><div class="n money" id="earn-today">R$ 34,78</div></div>
+      <div class="card stat"><h4>Este mês</h4><div class="n money" id="earn-month">R$ 612,40</div></div>
+    </div>
+
+    <div class="card chart">
+      <b style="font-size:.95rem">Ganhos da semana</b>
+      <div class="bars" id="week-bars" role="img" aria-label="Gráfico de barras dos ganhos diários da semana"></div>
+      <div class="days"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <b style="font-size:.95rem">Últimas recargas</b>
+      <div id="sess-list">
+        <div class="sess"><div><b>Renault Kwid E-Tech</b><span class="muted">Hoje · 09:12 · 18,4 kWh</span></div><span class="amt money">+ R$ 31,30</span></div>
+        <div class="sess"><div><b>BYD Dolphin</b><span class="muted">Ontem · 19:40 · 32,1 kWh</span></div><span class="amt money">+ R$ 54,60</span></div>
+        <div class="sess"><div><b>Fiat 500e</b><span class="muted">Ter · 14:05 · 21,7 kWh</span></div><span class="amt money">+ R$ 36,91</span></div>
+      </div>
+    </div>
+
+    <button class="btn ghost" style="margin-top:14px" data-action="openBox" data-from="scr-host">Ver meu carregador (demonstração)</button>
+    <p class="note">Repasse automático via Pix toda segunda-feira · Taxa GoodWe: 10%</p>
+  </section>
+
+  <!-- ============ CADASTRAR CARREGADOR ============ -->
+  <section class="screen no-tab" id="scr-add-charger">
+    <div class="backbar"><button data-go="scr-host" aria-label="Voltar">‹</button><span class="h-title">Cadastrar carregador</span></div>
+    <div class="card">
+      <h4 class="label-caps" style="margin-bottom:8px">CEP da instalação</h4>
+      <div class="row">
+        <div class="field" style="flex:1; margin-bottom:0"><input id="cep-input" class="field-input" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" aria-label="CEP"></div>
+        <button class="btn" style="width:auto; margin:0; padding:0 22px" data-action="lookupCep">Buscar</button>
+      </div>
+      <p class="muted" id="cep-status" style="font-size:.74rem; margin-top:8px">Digite o CEP para buscar o endereço automaticamente.</p>
+
+      <div id="cep-result" style="display:none">
+        <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+        <h4 class="label-caps" style="margin-bottom:8px">Rua</h4>
+        <div class="field"><input id="addr-street" class="field-input" type="text" placeholder="Rua / Avenida"></div>
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1">
+            <h4 class="label-caps" style="margin-bottom:8px">Bairro</h4>
+            <div class="field"><input id="addr-district" class="field-input" type="text" placeholder="Bairro"></div>
+          </div>
+          <div style="flex:1">
+            <h4 class="label-caps" style="margin-bottom:8px">Cidade/UF</h4>
+            <div class="field"><input id="addr-city" class="field-input" type="text" placeholder="Cidade/UF"></div>
+          </div>
+        </div>
+        <h4 class="label-caps" style="margin:10px 0 8px">Número do imóvel</h4>
+        <div class="field"><input id="addr-number" class="field-input" type="text" inputmode="numeric" placeholder="Ex: 128" aria-label="Número do imóvel"></div>
+        <p class="muted" style="font-size:.72rem; margin-top:6px">Confira o endereço encontrado e complete o número.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Quantas máquinas</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Nesse mesmo endereço</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepQty" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val" id="qty-val">1</span>
+          <button data-action="stepQty" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn" style="margin-top:16px" data-action="goScanDevice">Ler QR Code da máquina</button>
+    <p class="note">O QR Code fica no corpo da wallbox e identifica o modelo automaticamente.</p>
+  </section>
+
+  <!-- ============ SCAN NOVO CARREGADOR ============ -->
+  <section class="screen no-tab dark-scr" id="scr-scan-device">
+    <div class="backbar"><button data-go="scr-add-charger" aria-label="Voltar" style="background:#161a23; border-color:#262c39; color:#f2f3f6">‹</button><span class="h-title">Ler QR Code</span></div>
+    <p class="muted" style="color:#8d94a2; text-align:center">Aponte a câmera para o QR Code<br>impresso no corpo da wallbox</p>
+    <div class="viewport">
+      <svg id="qr-newdevice" width="190" height="190" role="img" aria-label="QR Code da nova wallbox"></svg>
+      <div class="scanline"></div>
+    </div>
+    <button class="btn" data-action="registerDevice">Simular leitura do QR Code</button>
+    <p class="note" style="color:#5d6572">Modelo e potência são detectados automaticamente.</p>
+    <button class="btn ghost" style="margin-top:14px" data-go="scr-manual-device">Não consigo ler o QR Code</button>
+  </section>
+
+  <!-- ============ ADICIONAR MANUALMENTE ============ -->
+  <section class="screen no-tab" id="scr-manual-device">
+    <div class="backbar"><button data-go="scr-scan-device" aria-label="Voltar">‹</button><span class="h-title">Adicionar manualmente</span></div>
+    <p class="muted" style="text-align:center">Escolha o modelo do seu carregador GoodWe ou informe as especificações de outro equipamento.</p>
+
+    <div class="subhead" style="margin-top:18px">Linha GoodWe HCA</div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="GW7K-HCA-20" role="button" tabindex="0">
+      <div class="role-ic">⚡</div>
+      <div><h3>GW7K-HCA-20</h3><p>7 kW · Monofásico · 230V, 32A</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="GW11K-HCA-20" role="button" tabindex="0">
+      <div class="role-ic">⚡</div>
+      <div><h3>GW11K-HCA-20</h3><p>11 kW · Trifásico · 400V, 16A</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="GW22K-HCA-20" role="button" tabindex="0">
+      <div class="role-ic">⚡</div>
+      <div><h3>GW22K-HCA-20</h3><p>22 kW · Trifásico · 400V, 32A</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="other" role="button" tabindex="0">
+      <div class="role-ic">✏️</div>
+      <div><h3>Outro modelo</h3><p>Não está na lista? Digite as especificações.</p></div>
+      <span class="arr">›</span>
+    </div>
+
+    <div id="manual-custom-fields" style="display:none; margin-top:4px">
+      <div class="card">
+        <h4 class="label-caps" style="margin-bottom:8px">Modelo / nome do equipamento</h4>
+        <div class="field"><input id="manual-name" class="field-input" type="text" placeholder="Ex: Carregador XPTO"></div>
+        <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+        <div class="spread">
+          <div><h4 class="label-caps">Potência</h4></div>
+          <div class="stepper">
+            <button data-action="stepManualKw" data-dir="-1" aria-label="Diminuir">−</button>
+            <span class="val" id="manual-kw-val">7 kW</span>
+            <button data-action="stepManualKw" data-dir="1" aria-label="Aumentar">＋</button>
+          </div>
+        </div>
+        <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+        <h4 class="label-caps" style="margin-bottom:8px">Tipo de conector</h4>
+        <div class="field"><input id="manual-connector" class="field-input" type="text" value="Tipo 2 · AC"></div>
+      </div>
+      <button class="btn" style="margin-top:16px" data-action="confirmManualDevice">Confirmar equipamento</button>
+    </div>
+  </section>
+
+  <!-- ============ RESULTADO DO CADASTRO ============ -->
+  <section class="screen no-tab" id="scr-device-result">
+    <div class="backbar"><button data-go="scr-add-charger" aria-label="Voltar">‹</button><span class="h-title">Carregador identificado</span></div>
+    <div class="card dev-card">
+      <div class="dev-ic">
+        <svg width="26" height="38" viewBox="0 0 26 38"><rect x="1" y="1" width="24" height="36" rx="7" fill="none" stroke="#131c2e" stroke-width="2"/><rect x="8" y="8" width="10" height="8" rx="2" fill="#f5333f"/><circle cx="13" cy="26" r="4" fill="none" stroke="#131c2e" stroke-width="2"/></svg>
+      </div>
+      <div>
+        <b id="res-model">GoodWe HCA</b>
+        <div class="muted" id="res-serial">N/S —</div>
+        <div class="muted" id="res-meta" style="font-size:.76rem; margin-top:1px">—</div>
+        <div style="margin-top:6px"><span class="chip good">● Detectado</span></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="rc-line"><span class="muted">Endereço</span><b id="res-address">—</b></div>
+    </div>
+    <div class="stats">
+      <div class="card stat"><h4>Potência</h4><div class="n" id="res-power">— kW</div></div>
+      <div class="card stat"><h4>Quantidade</h4><div class="n" id="res-qty">1 unidade</div></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Uso médio estimado</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Horas de recarga por dia</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepHours" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val" id="hours-val">3 h</span>
+          <button data-action="stepHours" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="rc-line"><span class="muted">Consumo estimado / unidade</span><b id="res-consumo-unit">— kWh/dia</b></div>
+      <div class="rc-line"><span class="muted">Consumo estimado total</span><b id="res-consumo-total">— kWh/dia</b></div>
+    </div>
+    <button class="btn" style="margin-top:16px" data-action="goViability">Continuar para Análise de Viabilidade</button>
+    <button class="btn ghost" style="margin-top:10px" data-go="scr-host">Cadastrar depois</button>
+  </section>
+
+  <!-- ============ ANÁLISE DE VIABILIDADE ============ -->
+  <section class="screen no-tab" id="scr-viability">
+    <div class="backbar"><button data-go="scr-host" aria-label="Voltar">‹</button><span class="h-title">Análise de Viabilidade</span></div>
+
+    <div class="card">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Vagas de recarga</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Carregadores disponíveis nesse endereço</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepVagas" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val" id="vagas-val">1</span>
+          <button data-action="stepVagas" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="subhead">Fonte de energia solar</div>
+    <div class="grid3">
+      <div class="tile tap srcopt sel" data-action="toggleSource" data-src="roof" role="button" tabindex="0" aria-pressed="true"><span style="font-size:1.6rem">🏠</span>Telhado</div>
+      <div class="tile tap srcopt" data-action="toggleSource" data-src="facade" role="button" tabindex="0" aria-pressed="false"><span style="font-size:1.6rem">🧱</span>Fachada</div>
+      <div class="tile tap srcopt" data-action="toggleSource" data-src="carport" role="button" tabindex="0" aria-pressed="false"><span style="font-size:1.6rem">🚗</span>Cobertura</div>
+    </div>
+    <p class="muted" style="text-align:center; font-size:.74rem; margin-top:8px">Toque para combinar mais de uma fonte — cada uma tem sua própria quantidade de placas.</p>
+
+    <div id="source-panels-container"></div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="rc-line"><span class="muted">Geração solar total</span><b id="gen-total">— kWh/dia</b></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Energia solar para recarga</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">O resto abastece a casa</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepAlloc" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val" id="alloc-val">60%</span>
+          <button data-action="stepAlloc" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="split-bar-track">
+          <div class="split-fill solar" id="split-solar"></div>
+          <div class="split-fill grid" id="split-grid"></div>
+        </div>
+        <div class="split-legend">
+          <span><i class="dot-solar"></i>Solar <b id="leg-solar">—</b></span>
+          <span><i class="dot-grid"></i>Rede <b id="leg-grid">—</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div><h4 class="label-caps">Tarifa da rede</h4></div>
+        <div class="stepper">
+          <button data-action="stepTariff" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val money" id="tariff-val">R$ 0,78</span>
+          <button data-action="stepTariff" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="rc-line"><span class="muted">Custo diário com rede</span><b class="money" id="cost-grid-day">—</b></div>
+      <div class="rc-line"><span class="muted">Custo médio por kWh entregue</span><b class="money" id="cost-avg-kwh">—</b></div>
+    </div>
+
+    <div class="card" style="margin-top:12px; background:#fdeaec; border-color:#f6ccd0">
+      <div class="spread">
+        <div><b style="font-size:.95rem">Preço sugerido</b><div class="muted" style="font-size:.74rem; margin-top:2px">Custo + margem, nunca abaixo do piso de mercado</div></div>
+        <div class="stepper">
+          <button data-action="stepMargin" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val" id="margin-val">140%</span>
+          <button data-action="stepMargin" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:10px">
+        <div style="font-size:2rem; font-weight:800; color:var(--red)" id="suggested-price">R$ —</div>
+        <div class="muted" style="font-size:.74rem">por kWh</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><h4>Lucro / carregador / dia</h4><div class="n money" id="profit-unit">—</div></div>
+      <div class="card stat"><h4>Lucro geral / mês</h4><div class="n money" id="profit-total">—</div></div>
+    </div>
+
+    <button class="btn" style="margin-top:16px" data-action="applySuggestedPrice">Aplicar preço sugerido</button>
+    <p class="note">Estimativas ilustrativas para fins acadêmicos — não consideram sazonalidade, degradação dos painéis ou bandeira tarifária.</p>
+  </section>
+
+  <!-- ============ MAPA / BUSCA ============ -->
+  <section class="screen no-tab" id="scr-map">
+    <div class="backbar"><button data-go="scr-role" aria-label="Voltar">‹</button><span class="h-title">Encontrar recarga</span></div>
+
+    <div class="mapbox">
+      <svg viewBox="0 0 340 170" role="img" aria-label="Mapa com três carregadores próximos">
+        <rect width="340" height="170" fill="#e9edf3"/>
+        <path d="M0 60 H340 M0 120 H340 M80 0 V170 M190 0 V170 M280 0 V170" stroke="#fff" stroke-width="10"/>
+        <path d="M0 60 H340 M0 120 H340 M80 0 V170 M190 0 V170 M280 0 V170" stroke="#d8dde6" stroke-width="1"/>
+        <rect x="16" y="14" width="48" height="32" rx="4" fill="#dfe6ef"/>
+        <rect x="210" y="132" width="54" height="26" rx="4" fill="#d9e8dc"/>
+        <circle cx="170" cy="92" r="7" fill="#3577f1" stroke="#fff" stroke-width="2.5"/>
+        <g font-size="13" text-anchor="middle">
+          <g transform="translate(120,52)"><path d="M0 8 C-9 -4 9 -4 0 8" fill="#f5333f" stroke="#fff"/><circle cy="-2" r="7" fill="#f5333f"/><text y="2" fill="#fff" font-size="9" font-weight="800">⚡</text></g>
+          <g transform="translate(236,88)"><path d="M0 8 C-9 -4 9 -4 0 8" fill="#b0b6c2" stroke="#fff"/><circle cy="-2" r="7" fill="#b0b6c2"/><text y="2" fill="#fff" font-size="9" font-weight="800">⚡</text></g>
+          <g transform="translate(60,132)"><path d="M0 8 C-9 -4 9 -4 0 8" fill="#f5333f" stroke="#fff"/><circle cy="-2" r="7" fill="#f5333f"/><text y="2" fill="#fff" font-size="9" font-weight="800">⚡</text></g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="card charger-item" data-go="scr-detail" role="button" tabindex="0">
+      <div class="pin-ic">🏠</div>
+      <div><h3>Garagem do Patrick</h3><div class="meta">1,2 km · 7,4 kW AC · Tipo 2 · ⭐ 4,9</div></div>
+      <div class="right"><span class="price-tag money" id="list-price">R$ 1,89/kWh</span><span class="chip good">Disponível</span></div>
+    </div>
+    <div class="card charger-item off">
+      <div class="pin-ic">🏢</div>
+      <div><h3>Condomínio Solar Ville</h3><div class="meta">2,8 km · 11 kW AC · Tipo 2 · ⭐ 4,7</div></div>
+      <div class="right"><span class="price-tag money">R$ 2,10/kWh</span><span class="chip warn">Ocupado</span></div>
+    </div>
+    <div class="card charger-item off">
+      <div class="pin-ic">🥖</div>
+      <div><h3>Padaria Pão &amp; Sol</h3><div class="meta">3,5 km · 7,4 kW AC · Tipo 2 · ⭐ 4,8</div></div>
+      <div class="right"><span class="price-tag money">R$ 1,75/kWh</span><span class="chip warn">Fecha às 15h</span></div>
+    </div>
+  </section>
+
+  <!-- ============ DETALHE DO CARREGADOR ============ -->
+  <section class="screen no-tab" id="scr-detail">
+    <div class="backbar"><button data-go="scr-map" aria-label="Voltar">‹</button><span class="h-title">Garagem do Patrick</span></div>
+    <div class="card">
+      <div class="spread">
+        <div class="row"><div class="pin-ic">🏠</div>
+          <div><b>Patrick P.</b><div class="muted">Anfitrião · ⭐ 4,9 (37 recargas)</div></div></div>
+        <span class="chip good">Disponível</span>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="rc-line"><span class="muted">Endereço</span><b>Rua das Acácias, 128</b></div>
+      <div class="rc-line"><span class="muted">Conector</span><b>Tipo 2 · 7,4 kW AC</b></div>
+      <div class="rc-line"><span class="muted">Preço</span><b class="money" id="detail-price">R$ 1,89 / kWh</b></div>
+      <div class="rc-line"><span class="muted">Janela de hoje</span><b>08h – 18h</b></div>
+    </div>
+    <div class="card" style="margin-top:12px; background:#fdeaec; border-color:#f6ccd0">
+      <b style="font-size:.9rem">Estimativa</b>
+      <p class="muted" style="margin-top:4px">Carregar 30 kWh (≈ 200 km) custa cerca de <b class="money" id="detail-est">R$ 56,70</b> e leva ~4 h.</p>
+    </div>
+    <button class="btn" style="margin-top:16px" data-go="scr-scan">Cheguei — ler QR Code</button>
+    <p class="note">O QR Code fica no corpo do carregador. A vaga é liberada pelo anfitrião.</p>
+  </section>
+
+  <!-- ============ SCANNER ============ -->
+  <section class="screen no-tab dark-scr" id="scr-scan">
+    <div class="backbar"><button data-go="scr-detail" aria-label="Voltar" style="background:#161a23; border-color:#262c39; color:#f2f3f6">‹</button><span class="h-title">Ler QR Code</span></div>
+    <p class="muted" style="color:#8d94a2; text-align:center">Aponte a câmera para o QR Code<br>no corpo da wallbox</p>
+    <div class="viewport">
+      <svg id="qr-scan" width="190" height="190" role="img" aria-label="QR Code do carregador"></svg>
+      <div class="scanline"></div>
+    </div>
+    <button class="btn" data-go="scr-pay">Simular leitura do QR Code</button>
+    <p class="note" style="color:#5d6572">GW-HCA · ID BR-0128 · Garagem do Patrick</p>
+  </section>
+
+  <!-- ============ PAGAMENTO ============ -->
+  <section class="screen no-tab" id="scr-pay">
+    <div class="backbar"><button data-go="scr-scan" aria-label="Voltar">‹</button><span class="h-title">Confirmar recarga</span></div>
+    <div class="card">
+      <div class="row"><div class="pin-ic">🏠</div>
+        <div><b>Garagem do Patrick</b><div class="muted money" id="pay-price">Tipo 2 · 7,4 kW · R$ 1,89/kWh</div></div></div>
+    </div>
+    <div class="card" style="margin-top:12px; padding:4px 16px">
+      <div class="payopt sel" data-action="selPay"><span class="dot"></span><div><b>Pix</b><div class="muted">Aprovação instantânea</div></div></div>
+      <div class="payopt" data-action="selPay"><span class="dot"></span><div><b>Carteira GoodWe</b><div class="muted money">Saldo: R$ 128,50</div></div></div>
+    </div>
+    <div class="card" style="margin-top:12px; background:var(--blue-bg); border-color:#c7d9f7">
+      <p style="font-size:.8rem; line-height:1.5; color:#1d4ea8"><b>Pré-autorização de R$ 80,00.</b> Você paga apenas o que consumir — o restante é estornado ao encerrar.</p>
+    </div>
+    <button class="btn" style="margin-top:16px" data-action="startCharge">Confirmar e iniciar recarga</button>
+    <p class="note">Pagamento simulado — protótipo sem transação real.</p>
+  </section>
+
+  <!-- ============ CARREGANDO ============ -->
+  <section class="screen no-tab dark-scr" id="scr-charging">
+    <div style="text-align:center; margin-top:6px">
+      <span class="chip" style="background:#12304d; color:#5aa7ff" id="chg-status">⚡ Carregando…</span>
+    </div>
+    <div class="ringwrap">
+      <svg width="210" height="210" viewBox="0 0 210 210">
+        <circle cx="105" cy="105" r="92" fill="none" stroke="#232936" stroke-width="14"/>
+        <circle id="ring" cx="105" cy="105" r="92" fill="none" stroke="#f5333f" stroke-width="14"
+          stroke-linecap="round" stroke-dasharray="578" stroke-dashoffset="393"
+          transform="rotate(-90 105 105)"/>
+      </svg>
+      <div class="center"><span class="pct" id="chg-pct">32%</span><span class="lbl">Bateria · meta 80%</span></div>
+    </div>
+    <div class="cstats">
+      <div class="cstat"><h4>Energia</h4><div class="n money" id="chg-kwh">0,0 kWh</div></div>
+      <div class="cstat"><h4>Custo parcial</h4><div class="n money" id="chg-cost">R$ 0,00</div></div>
+      <div class="cstat"><h4>Potência</h4><div class="n">7,4 kW</div></div>
+      <div class="cstat"><h4>Tempo</h4><div class="n money" id="chg-time">0 min</div></div>
+    </div>
+    <button class="btn ghost" style="margin-top:14px" data-action="openBox" data-from="scr-charging">Ver o carregador</button>
+    <button class="btn" style="margin-top:10px" data-action="finishCharge">Encerrar recarga</button>
+    <p class="note" style="color:#5d6572">Simulação acelerada ~60× para a demonstração.</p>
+  </section>
+
+  <!-- ============ RECIBO ============ -->
+  <section class="screen no-tab" id="scr-receipt">
+    <div class="bigcheck">✓</div>
+    <h2 style="text-align:center; font-size:1.3rem">Recarga concluída!</h2>
+    <p class="muted" style="text-align:center; margin-top:4px">Garagem do Patrick · hoje</p>
+    <div class="card" style="margin-top:16px">
+      <div class="rc-line"><span class="muted">Energia entregue</span><b id="rc-kwh">— kWh</b></div>
+      <div class="rc-line"><span class="muted">Duração</span><b id="rc-time">—</b></div>
+      <div class="rc-line"><span class="muted">Tarifa</span><b class="money" id="rc-rate">—</b></div>
+      <div class="rc-line" style="font-size:1rem"><span><b>Total pago</b></span><b class="money" id="rc-total" style="color:var(--red)">—</b></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="rc-line"><span class="muted">Anfitrião recebe (90%)</span><b class="money" id="rc-host" style="color:var(--good)">—</b></div>
+      <div class="rc-line"><span class="muted">Taxa GoodWe (10%)</span><b class="money" id="rc-fee">—</b></div>
+    </div>
+    <div class="stars" id="stars" aria-label="Avaliar anfitrião">
+      <button data-action="rate" data-n="1">★</button><button data-action="rate" data-n="2">★</button><button data-action="rate" data-n="3">★</button><button data-action="rate" data-n="4">★</button><button data-action="rate" data-n="5">★</button>
+    </div>
+    <button class="btn" data-action="concludeReceipt">Concluir</button>
+  </section>
+
+  <!-- ============ SIMULAÇÃO DO CARREGADOR ============ -->
+  <section class="screen no-tab" id="scr-box">
+    <div class="backbar"><button data-action="closeBox" aria-label="Voltar">‹</button><span class="h-title">Wallbox · demonstração</span></div>
+    <p class="muted" style="text-align:center">É assim que o carregador físico se comporta.<br>Nenhum hardware novo — só o QR Code adesivo.</p>
+    <div class="wallbox">
+      <div class="brand">GOODWE</div>
+      <div class="led idle" id="wb-led"></div>
+      <div class="qrpanel"><svg id="qr-box" width="130" height="130" role="img" aria-label="QR Code do carregador"></svg></div>
+      <div class="socket"></div>
+    </div>
+    <div class="wb-status" id="wb-status">🟢 Disponível para recarga</div>
+    <p class="note">LED verde: disponível · LED azul pulsando: carregando<br>QR Code identifica o carregador no marketplace.</p>
+  </section>
+
+  <!-- ============ TAB BAR ============ -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tab on" data-scr="scr-home">
+      <svg viewBox="0 0 24 24"><path d="M3 15l4-8 4 10 4-8 4 6"/></svg><span>Início</span></button>
+    <button class="tab" data-scr="scr-devices">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="3"/><rect x="4" y="14" width="16" height="7" rx="3"/></svg><span>Dispositivos</span></button>
+    <button class="tab" data-scr="scr-services">
+      <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg><span>Serviços</span></button>
+    <button class="tab" data-scr="scr-account">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Conta</span></button>
+  </nav>
+</div>
+
+<script>
+  const S = {
+    price: 1.89,
+    pub: true,
+    today: 34.78,
+    month: 612.40,
+    week: [38, 52, 41, 76, 64, 90, 34.78],
+    charging: false,
+    kwh: 0, pct: 32, secs: 0, timer: null,
+    prevBox: 'scr-home',
+    newQty: 1, useHours: 3, serial: '', address: { street: '', number: '', district: '', city: '' },
+    deviceModel: '', devicePower: 7, deviceMeta: '', manualKw: 7,
+    chargers: [
+      { model: 'GoodWe HCA', power: 7, qty: 1, address: 'Rua das Acácias, 128',
+        serial: 'GWH7-2841-BR', meta: 'Monofásico · 230V, 32A · Tipo 2' },
+    ],
+    vagas: 1,
+    sources: {
+      roof: { sel: true, n: 6 },
+      facade: { sel: false, n: 4 },
+      carport: { sel: false, n: 4 },
+    },
+    solarAllocPct: 60, tariff: 0.78, marginPct: 140,
+    suggestedPrice: 0,
+  };
+  const $ = id => document.getElementById(id);
+  const br = n => n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  const num = (n, d = 1) => n.toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+  const TABS = ['scr-home','scr-devices','scr-services','scr-account'];
+  const GEN_PER_PANEL = { roof: 2.6, facade: 1.9, carport: 2.2 };
+  const GOODWE_MODELS = [
+    { code: 'GW7K-HCA-20', kw: 7, meta: 'Monofásico · 230V, 32A · Tipo 2' },
+    { code: 'GW11K-HCA-20', kw: 11, meta: 'Trifásico · 400V, 16A · Tipo 2' },
+    { code: 'GW22K-HCA-20', kw: 22, meta: 'Trifásico · 400V, 32A · Tipo 2' },
+  ];
+  const SOURCE_META = {
+    roof: { label: 'Telhado' },
+    facade: { label: 'Fachada' },
+    carport: { label: 'Cobertura de carro' },
+  };
+
+  function go(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $(id).classList.add('active');
+    $(id).scrollTop = 0;
+    const bar = $('tabbar');
+    if (TABS.includes(id)){
+      bar.classList.add('visible');
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.scr === id));
+    } else bar.classList.remove('visible');
+  }
+
+  /* ---------- host ---------- */
+  function stepPrice(dir){
+    S.price = Math.min(3.5, Math.max(0.5, S.price + dir * 0.10));
+    renderPrice();
+  }
+  function renderPrice(){
+    $('price-val').textContent = br(S.price);
+    $('list-price').textContent = br(S.price) + '/kWh';
+    $('detail-price').textContent = br(S.price) + ' / kWh';
+    $('detail-est').textContent = br(30 * S.price);
+    $('pay-price').textContent = 'Tipo 2 · 7,4 kW · ' + br(S.price) + '/kWh';
+  }
+  function togglePublic(on){
+    S.pub = on;
+    $('host-pub-chip').textContent = on ? '● Visível ao público' : '● Oculto do público';
+    $('host-pub-chip').className = 'chip ' + (on ? 'good' : 'warn');
+    document.querySelectorAll('.dev-pub-chip').forEach(el => el.textContent = on ? 'Pública' : 'Privada');
+  }
+  const deviceIconSvg = '<svg width="26" height="38" viewBox="0 0 26 38"><rect x="1" y="1" width="24" height="36" rx="7" fill="none" stroke="#131c2e" stroke-width="2"/><rect x="8" y="8" width="10" height="8" rx="2" fill="#f5333f"/><circle cx="13" cy="26" r="4" fill="none" stroke="#131c2e" stroke-width="2"/></svg>';
+  function renderChargersList(){
+    $('my-chargers-list').innerHTML = S.chargers.map(c => `
+      <div class="card dev-card" style="margin-bottom:12px">
+        <div class="dev-ic">${deviceIconSvg}</div>
+        <div>
+          <b>${c.model} · ${num(c.power, c.power % 1 === 0 ? 0 : 1)} kW</b>
+          <div class="muted">${c.address}${c.qty > 1 ? ' · ' + c.qty + ' unidades' : ''}</div>
+          <div class="muted" style="font-size:.72rem; margin-top:1px">N/S ${c.serial}</div>
+          <div style="margin-top:6px"><span class="chip good">● Online</span></div>
+        </div>
+      </div>`).join('');
+    $('my-devices-list').innerHTML = S.chargers.map(c => `
+      <div class="card dev-card" style="margin-bottom:12px">
+        <div class="dev-ic">${deviceIconSvg}</div>
+        <div>
+          <b>${c.model} · ${num(c.power, c.power % 1 === 0 ? 0 : 1)} kW</b>
+          <div class="muted">N/S ${c.serial} · ${c.meta}</div>
+          <div style="margin-top:6px"><span class="chip good">● Online</span>
+            <span class="chip blue dev-pub-chip">${S.pub ? 'Pública' : 'Privada'}</span></div>
+        </div>
+      </div>`).join('');
+  }
+  function renderEarnings(){
+    $('earn-today').textContent = br(S.today);
+    $('earn-month').textContent = br(S.month);
+    $('wallet-line').textContent = br(S.month) + ' ›';
+    S.week[6] = S.today;
+    const bars = $('week-bars');
+    bars.innerHTML = '';
+    const max = Math.max(...S.week);
+    S.week.forEach((v, i) => {
+      const col = document.createElement('div');
+      col.className = 'bcol';
+      const hot = i === 6;
+      col.innerHTML = (hot ? `<span class="bval money">${br(v)}</span>` : '') +
+        `<div class="bar ${hot ? 'hot' : ''}" style="height:${Math.max(6, v / max * 100)}%"></div>`;
+      bars.appendChild(col);
+    });
+  }
+
+  /* ---------- payment ---------- */
+  function selPay(el){
+    el.parentElement.querySelectorAll('.payopt').forEach(o => o.classList.remove('sel'));
+    el.classList.add('sel');
+  }
+
+  /* ---------- charging sim ---------- */
+  function startCharge(){
+    S.charging = true; S.kwh = 0; S.pct = 32; S.secs = 0;
+    setBox(true);
+    go('scr-charging');
+    clearInterval(S.timer);
+    S.timer = setInterval(() => {
+      const e = 7.4 * 150 / 3600;         // 150 simulated seconds per tick
+      S.kwh += e; S.secs += 150;
+      S.pct = Math.min(80, 32 + S.kwh / 60 * 100);
+      renderCharge();
+      if (S.pct >= 80) finishCharge(true);
+    }, 90);
+    renderCharge();
+  }
+  function renderCharge(){
+    $('chg-pct').textContent = Math.floor(S.pct) + '%';
+    $('chg-kwh').textContent = S.kwh.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' kWh';
+    $('chg-cost').textContent = br(S.kwh * S.price);
+    $('chg-time').textContent = Math.round(S.secs / 60) + ' min';
+    $('ring').style.strokeDashoffset = 578 - 578 * (S.pct / 100);
+  }
+  function finishCharge(auto){
+    if (!S.charging) return;
+    S.charging = false;
+    clearInterval(S.timer);
+    $('chg-status').textContent = '✓ Recarga encerrada';
+    setBox(false);
+    const total = S.kwh * S.price, host = total * 0.9;
+    $('rc-kwh').textContent = S.kwh.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' kWh';
+    $('rc-time').textContent = Math.round(S.secs / 60) + ' min' + (auto ? ' · meta 80% atingida' : '');
+    $('rc-rate').textContent = br(S.price) + ' / kWh';
+    $('rc-total').textContent = br(total);
+    $('rc-host').textContent = '+ ' + br(host);
+    $('rc-fee').textContent = br(total - host);
+    S.pendingHost = host;
+    setTimeout(() => go('scr-receipt'), auto ? 700 : 250);
+  }
+  function rate(n){
+    document.querySelectorAll('#stars button').forEach((b, i) => b.classList.toggle('on', i < n));
+  }
+  function concludeReceipt(){
+    if (S.pendingHost){
+      S.today += S.pendingHost;
+      S.month += S.pendingHost;
+      S.pendingHost = 0;
+      const list = $('sess-list');
+      const div = document.createElement('div');
+      div.className = 'sess';
+      div.innerHTML = `<div><b>Recarga da demonstração</b><span class="muted">Agora · ${$('rc-kwh').textContent}</span></div><span class="amt money">+ ${$('rc-host').textContent.replace('+ ','')}</span>`;
+      list.prepend(div);
+      renderEarnings();
+    }
+    $('chg-status').textContent = '⚡ Carregando…';
+    go('scr-home');
+  }
+
+  /* ---------- cadastro de carregador ---------- */
+  const MOCK_CEPS = {
+    '01310100': { street: 'Avenida Paulista', district: 'Bela Vista', city: 'São Paulo/SP' },
+    '20040020': { street: 'Avenida Rio Branco', district: 'Centro', city: 'Rio de Janeiro/RJ' },
+    '30130010': { street: 'Rua da Bahia', district: 'Centro', city: 'Belo Horizonte/MG' },
+    '80010000': { street: 'Rua XV de Novembro', district: 'Centro', city: 'Curitiba/PR' },
+    '04538133': { street: 'Avenida Brigadeiro Faria Lima', district: 'Itaim Bibi', city: 'São Paulo/SP' },
+  };
+  function formatCep(v){
+    const d = v.replace(/\D/g, '').slice(0, 8);
+    return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;
+  }
+  function setCepStatus(msg, warn){
+    const el = $('cep-status');
+    el.textContent = msg;
+    el.style.color = warn ? 'var(--red)' : 'var(--muted)';
+  }
+  async function lookupCep(){
+    const digits = $('cep-input').value.replace(/\D/g, '');
+    if (digits.length !== 8){
+      setCepStatus('CEP inválido — digite os 8 números.', true);
+      return;
+    }
+    setCepStatus('Buscando endereço…', false);
+    let data = null;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const json = await res.json();
+      if (!json.erro) data = { street: json.logradouro, district: json.bairro, city: `${json.localidade}/${json.uf}` };
+    } catch (e) { /* offline ou bloqueado — usa a base local abaixo */ }
+    if (!data) data = MOCK_CEPS[digits] || null;
+
+    $('addr-street').value = data ? data.street : '';
+    $('addr-district').value = data ? data.district : '';
+    $('addr-city').value = data ? data.city : '';
+    $('cep-result').style.display = 'block';
+    $('addr-number').focus();
+    setCepStatus(data ? 'Endereço encontrado — confira e complete o número.' : 'CEP não encontrado — preencha o endereço manualmente.', !data);
+  }
+  function stepQty(dir){
+    S.newQty = clamp(S.newQty + dir, 1, 20);
+    $('qty-val').textContent = S.newQty;
+  }
+  function goScanDevice(){
+    if ($('cep-result').style.display === 'none'){
+      setCepStatus('Busque o CEP antes de continuar.', true);
+      $('cep-input').focus();
+      return;
+    }
+    if (!$('addr-number').value.trim()){
+      setCepStatus('Preencha o número do imóvel antes de continuar.', true);
+      $('addr-number').focus();
+      return;
+    }
+    go('scr-scan-device');
+  }
+  function randomSerial(prefix){
+    return prefix.replace(/\s+/g, '').toUpperCase() + '-' + Math.floor(1000 + Math.random() * 8999) + '-BR';
+  }
+  function finishRegistration(){
+    S.address = {
+      street: $('addr-street').value.trim(),
+      number: $('addr-number').value.trim(),
+      district: $('addr-district').value.trim(),
+      city: $('addr-city').value.trim(),
+    };
+    const parts = [
+      S.address.street ? `${S.address.street}, ${S.address.number}` : '',
+      S.address.district, S.address.city,
+    ].filter(Boolean);
+    const addressStr = parts.length ? parts.join(' · ') : 'Endereço não informado';
+    $('res-model').textContent = S.deviceModel;
+    $('res-meta').textContent = S.deviceMeta;
+    $('res-address').textContent = addressStr;
+    $('res-serial').textContent = 'N/S ' + S.serial;
+    $('res-power').textContent = num(S.devicePower, S.devicePower % 1 === 0 ? 0 : 1) + ' kW';
+    $('res-qty').textContent = S.newQty + (S.newQty > 1 ? ' unidades' : ' unidade');
+    S.vagas = S.newQty;
+    S.chargers.push({
+      model: S.deviceModel, power: S.devicePower, qty: S.newQty,
+      address: addressStr, serial: S.serial, meta: S.deviceMeta,
+    });
+    renderChargersList();
+    renderDeviceResult();
+    go('scr-device-result');
+  }
+  function registerDevice(){
+    const picked = GOODWE_MODELS[Math.floor(Math.random() * GOODWE_MODELS.length)];
+    S.deviceModel = picked.code;
+    S.devicePower = picked.kw;
+    S.deviceMeta = picked.meta;
+    S.serial = randomSerial(picked.code);
+    finishRegistration();
+  }
+  function selManualModel(el){
+    const model = el.dataset.model;
+    if (model === 'other'){
+      $('manual-custom-fields').style.display = 'block';
+      $('manual-name').focus();
+      return;
+    }
+    const found = GOODWE_MODELS.find(m => m.code === model);
+    S.deviceModel = found.code;
+    S.devicePower = found.kw;
+    S.deviceMeta = found.meta;
+    S.serial = randomSerial(found.code);
+    finishRegistration();
+  }
+  function stepManualKw(dir){
+    S.manualKw = clamp(S.manualKw + dir, 1, 50);
+    $('manual-kw-val').textContent = S.manualKw + ' kW';
+  }
+  function confirmManualDevice(){
+    S.deviceModel = $('manual-name').value.trim() || 'Equipamento personalizado';
+    S.devicePower = S.manualKw;
+    S.deviceMeta = ($('manual-connector').value.trim() || 'Tipo 2 · AC') + ' · especificado manualmente';
+    S.serial = randomSerial('CUSTOM');
+    finishRegistration();
+  }
+  function stepHours(dir){
+    S.useHours = clamp(S.useHours + dir, 1, 12);
+    renderDeviceResult();
+  }
+  function renderDeviceResult(){
+    $('hours-val').textContent = S.useHours + ' h';
+    const perUnit = S.devicePower * S.useHours;
+    $('res-consumo-unit').textContent = num(perUnit) + ' kWh/dia';
+    $('res-consumo-total').textContent = num(perUnit * S.newQty) + ' kWh/dia';
+  }
+  function goViability(){
+    renderViability();
+    go('scr-viability');
+  }
+
+  /* ---------- análise de viabilidade ---------- */
+  function stepVagas(dir){ S.vagas = clamp(S.vagas + dir, 1, 50); renderViability(); }
+  function toggleSource(key){
+    S.sources[key].sel = !S.sources[key].sel;
+    renderViability();
+  }
+  function stepSourcePanels(key, dir){
+    S.sources[key].n = clamp(S.sources[key].n + dir, 1, 60);
+    renderViability();
+  }
+  function stepAlloc(dir){ S.solarAllocPct = clamp(S.solarAllocPct + dir * 10, 0, 100); renderViability(); }
+  function stepTariff(dir){ S.tariff = clamp(+(S.tariff + dir * 0.05).toFixed(2), 0.10, 3); renderViability(); }
+  function stepMargin(dir){ S.marginPct = clamp(S.marginPct + dir * 10, 0, 400); renderViability(); }
+
+  function renderSourcePanels(){
+    const container = $('source-panels-container');
+    const keys = Object.keys(S.sources).filter(k => S.sources[k].sel);
+    if (!keys.length){
+      container.innerHTML = `<p class="muted" style="text-align:center; margin:14px 0">Nenhuma fonte solar selecionada — 100% da energia virá da rede.</p>`;
+      return;
+    }
+    container.innerHTML = keys.map(k => {
+      const meta = SOURCE_META[k], src = S.sources[k], gen = GEN_PER_PANEL[k];
+      return `
+        <div class="card" style="margin-top:12px">
+          <div class="spread">
+            <div>
+              <h4 class="label-caps">Placas · ${meta.label}</h4>
+              <div class="muted" style="font-size:.72rem; margin-top:2px">Geração: ${num(gen)} kWh/dia por placa</div>
+            </div>
+            <div class="stepper">
+              <button data-action="stepSourcePanels" data-src="${k}" data-dir="-1" aria-label="Diminuir">−</button>
+              <span class="val">${src.n}</span>
+              <button data-action="stepSourcePanels" data-src="${k}" data-dir="1" aria-label="Aumentar">＋</button>
+            </div>
+          </div>
+          <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+          <div class="rc-line"><span class="muted">Subtotal ${meta.label.toLowerCase()}</span><b>${num(gen * src.n)} kWh/dia</b></div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderViability(){
+    $('vagas-val').textContent = S.vagas;
+    $('alloc-val').textContent = S.solarAllocPct + '%';
+    $('tariff-val').textContent = br(S.tariff);
+    $('margin-val').textContent = S.marginPct + '%';
+
+    document.querySelectorAll('.srcopt').forEach(t => {
+      const sel = S.sources[t.dataset.src].sel;
+      t.classList.toggle('sel', sel);
+      t.setAttribute('aria-pressed', sel);
+    });
+    renderSourcePanels();
+
+    const potenciaUnit = S.devicePower;
+    const consumoUnitDia = potenciaUnit * S.useHours;
+    const consumoTotalDia = consumoUnitDia * S.vagas;
+
+    const geracaoTotal = Object.keys(S.sources).reduce((sum, k) =>
+      sum + (S.sources[k].sel ? GEN_PER_PANEL[k] * S.sources[k].n : 0), 0);
+    $('gen-total').textContent = num(geracaoTotal) + ' kWh/dia';
+
+    const solarParaRecarga = geracaoTotal * (S.solarAllocPct / 100);
+    const solarUsado = Math.min(solarParaRecarga, consumoTotalDia);
+    const redeDia = Math.max(0, consumoTotalDia - solarUsado);
+    const totalDia = solarUsado + redeDia || 1;
+    $('split-solar').style.width = (solarUsado / totalDia * 100) + '%';
+    $('split-grid').style.width = (redeDia / totalDia * 100) + '%';
+    $('leg-solar').textContent = num(solarUsado) + ' kWh';
+    $('leg-grid').textContent = num(redeDia) + ' kWh';
+
+    const custoRedeDia = redeDia * S.tariff;
+    const custoMedio = consumoTotalDia > 0 ? custoRedeDia / consumoTotalDia : 0;
+    $('cost-grid-day').textContent = br(custoRedeDia);
+    $('cost-avg-kwh').textContent = br(custoMedio) + '/kWh';
+
+    const precoSugerido = Math.max(custoMedio * (1 + S.marginPct / 100), 1.80);
+    $('suggested-price').textContent = br(precoSugerido);
+    S.suggestedPrice = precoSugerido;
+
+    const lucroUnitDia = (precoSugerido - custoMedio) * consumoUnitDia;
+    const lucroMes = lucroUnitDia * S.vagas * 30;
+    $('profit-unit').textContent = br(lucroUnitDia) + '/dia';
+    $('profit-total').textContent = br(lucroMes) + '/mês';
+  }
+  function applySuggestedPrice(){
+    S.price = Math.round(S.suggestedPrice * 100) / 100;
+    renderPrice();
+    go('scr-host');
+  }
+
+  /* ---------- wallbox sim ---------- */
+  function openBox(from){ S.prevBox = from; go('scr-box'); }
+  function closeBox(){ go(S.prevBox); }
+  function setBox(busy){
+    $('wb-led').className = 'led ' + (busy ? 'busy' : 'idle');
+    $('wb-status').textContent = busy ? '🔵 Carregando · sessão ativa' : '🟢 Disponível para recarga';
+  }
+
+  /* ---------- fake QR (deterministic) ---------- */
+  function drawQR(svgId, size, seed = 20260807){
+    const svg = $(svgId), n = 21, m = size * 0.09, cell = (size - 2 * m) / n;
+    const px = i => (m + i * cell).toFixed(1);
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const inFinder = (x, y) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7);
+    let out = `<rect width="${size}" height="${size}" rx="${size*0.05}" fill="#fff"/>`;
+    for (let y = 0; y < n; y++)
+      for (let x = 0; x < n; x++)
+        if (!inFinder(x, y) && rnd() > 0.55)
+          out += `<rect x="${px(x)}" y="${px(y)}" width="${cell.toFixed(1)}" height="${cell.toFixed(1)}" fill="#131c2e"/>`;
+    [[0,0],[n-7,0],[0,n-7]].forEach(([fx, fy]) => {
+      out += `<rect x="${px(fx)}" y="${px(fy)}" width="${7*cell}" height="${7*cell}" fill="#131c2e"/>
+        <rect x="${px(fx+1)}" y="${px(fy+1)}" width="${5*cell}" height="${5*cell}" fill="#fff"/>
+        <rect x="${px(fx+2)}" y="${px(fy+2)}" width="${3*cell}" height="${3*cell}" fill="#131c2e"/>`;
+    });
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.innerHTML = out;
+  }
+
+  drawQR('qr-scan', 190);
+  drawQR('qr-box', 130);
+  drawQR('qr-newdevice', 190, 20260808);
+  renderPrice();
+  renderEarnings();
+  renderChargersList();
+  renderDeviceResult();
+  renderViability();
+
+  /* ---------- event delegation (CSP-safe: no inline handlers) ---------- */
+  function handleActivate(target){
+    const goEl = target.closest('[data-go]');
+    if (goEl){ go(goEl.dataset.go); return true; }
+    const scrEl = target.closest('[data-scr]');
+    if (scrEl){ go(scrEl.dataset.scr); return true; }
+    const actEl = target.closest('[data-action]');
+    if (actEl){
+      switch (actEl.dataset.action){
+        case 'stepPrice': stepPrice(Number(actEl.dataset.dir)); break;
+        case 'openBox': openBox(actEl.dataset.from); break;
+        case 'selPay': selPay(actEl); break;
+        case 'startCharge': startCharge(); break;
+        case 'finishCharge': finishCharge(); break;
+        case 'concludeReceipt': concludeReceipt(); break;
+        case 'closeBox': closeBox(); break;
+        case 'rate': rate(Number(actEl.dataset.n)); break;
+        case 'lookupCep': lookupCep(); break;
+        case 'stepQty': stepQty(Number(actEl.dataset.dir)); break;
+        case 'goScanDevice': goScanDevice(); break;
+        case 'registerDevice': registerDevice(); break;
+        case 'selManualModel': selManualModel(actEl); break;
+        case 'stepManualKw': stepManualKw(Number(actEl.dataset.dir)); break;
+        case 'confirmManualDevice': confirmManualDevice(); break;
+        case 'stepHours': stepHours(Number(actEl.dataset.dir)); break;
+        case 'goViability': goViability(); break;
+        case 'stepVagas': stepVagas(Number(actEl.dataset.dir)); break;
+        case 'toggleSource': toggleSource(actEl.dataset.src); break;
+        case 'stepSourcePanels': stepSourcePanels(actEl.dataset.src, Number(actEl.dataset.dir)); break;
+        case 'stepAlloc': stepAlloc(Number(actEl.dataset.dir)); break;
+        case 'stepTariff': stepTariff(Number(actEl.dataset.dir)); break;
+        case 'stepMargin': stepMargin(Number(actEl.dataset.dir)); break;
+        case 'applySuggestedPrice': applySuggestedPrice(); break;
+      }
+      return true;
+    }
+    return false;
+  }
+  document.addEventListener('click', e => handleActivate(e.target));
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (e.target.closest('[data-go],[data-scr],[data-action]')) handleActivate(e.target);
+  });
+  $('pub-toggle').addEventListener('change', e => togglePublic(e.target.checked));
+  $('cep-input').addEventListener('input', e => {
+    e.target.value = formatCep(e.target.value);
+    if (e.target.value.replace(/\D/g, '').length === 8) lookupCep();
+  });
+</script>
