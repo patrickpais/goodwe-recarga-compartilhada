@@ -22,7 +22,7 @@
 
   Endpoint do botão:  GET /button   -> {"event":1}  (1 = houve clique desde a última leitura)
 
-  O ESP32 também serve o próprio app (aba web_content.ino, gerado a partir
+  O ESP32 também serve o próprio app (arquivo web_content.h, gerado a partir
   de goodwe-mobile.html) em http://192.168.4.1/ — é só conectar o celular
   na rede "GoodWe-Demo" e abrir esse endereço no navegador, sem precisar
   de notebook nem internet. E guarda o estado do app num "quadro
@@ -41,6 +41,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Adafruit_NeoPixel.h>
+#include "web_content.h"
 
 // ---------------- ajuste conforme sua montagem ----------------
 #define LED_PIN     5      // GPIO ligado ao fio DIN (dados) da fita
@@ -134,7 +135,7 @@ void handleLed() {
 
 void handleRoot() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.send(200, "text/html; charset=utf-8", INDEX_HTML); // definido em web_content.ino
+  server.send(200, "text/html; charset=utf-8", INDEX_HTML); // definido em web_content.h
 }
 
 void handleStateGet() {

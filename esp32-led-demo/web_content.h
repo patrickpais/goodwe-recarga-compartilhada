@@ -1,3 +1,6 @@
+#ifndef WEB_CONTENT_H
+#define WEB_CONTENT_H
+
 /*
   GoodWe · Recarga Compartilhada — conteúdo da página servida pelo ESP32
   ------------------------------------------------------------
@@ -6,6 +9,12 @@
   servir ele direto em http://192.168.4.1/, sem precisar de cartão SD,
   LittleFS nem nenhum plugin extra de upload de arquivo — só grava esse
   sketch normalmente que já vem tudo junto.
+
+  É um arquivo .h (cabeçalho comum), não .ino, de propósito: o Arduino
+  tenta "adivinhar" funções dentro de arquivos .ino pra gerar
+  declarações automáticas, e se confunde com a quantidade de chaves e
+  "funcao(){" que existe dentro do JavaScript aqui dentro — um .h não
+  passa por essa adivinhação, só é incluído direto no arquivo principal.
 
   Pra ATUALIZAR o app: gere de novo esse arquivo a partir do
   goodwe-mobile.html (peça ajuda pro Claude) e grave o firmware de novo.
@@ -1986,3 +1995,5 @@ const char INDEX_HTML[] = R"HTMLDELIM(<meta charset="utf-8">
   });
 </script>
 )HTMLDELIM";
+
+#endif
