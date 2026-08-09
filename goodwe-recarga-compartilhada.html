@@ -1260,7 +1260,10 @@
   };
   function syncPhysicalLed(){
     if (!PHYSICAL_LED.enabled) return;
-    const status = S.chargingIndex !== null ? chargerStatusFor(S.chargingIndex) : 'disponivel';
+    // fora de uma sessão ativa, o LED reflete o carregador padrão (0) — inclusive
+    // se ele foi desativado (oculto); durante uma sessão, segue quem está carregando
+    const idx = S.chargingIndex !== null ? S.chargingIndex : 0;
+    const status = S.chargers.length ? chargerStatusFor(idx) : 'oculto';
     const pct = status === 'carregando' ? Math.round(S.pct) : null;
     const statusChanged = status !== PHYSICAL_LED.lastStatus;
     const pctChanged = pct !== null && pct !== PHYSICAL_LED.lastPct;
@@ -1523,10 +1526,12 @@
     setCepStatus(p, 'Buscando endereço…', false);
     let data = null, source = 'api';
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      // limite de 3s: sem isso, numa rede sem internet (ex: conectado no ESP32) o
+      // fetch pode ficar "pendurado" por muito tempo antes de falhar sozinho
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`, { signal: AbortSignal.timeout(3000) });
       const json = await res.json();
       if (!json.erro) data = { street: json.logradouro, district: json.bairro, city: `${json.localidade}/${json.uf}` };
-    } catch (e) { /* sem internet (ex: conectado na rede do ESP32) ou bloqueado — usa a base local abaixo */ }
+    } catch (e) { /* sem internet, bloqueado, ou demorou demais — usa a base local abaixo */ }
     if (!data) { data = MOCK_CEPS[digits]; source = 'mock'; }
     // sem internet e CEP fora da base local: preenche um endereço de exemplo em vez de deixar em branco,
     // pra não travar o cadastro durante a demonstração (o anfitrião ainda pode editar tudo à mão)
