@@ -22,6 +22,17 @@
 
   Endpoint do botão:  GET /button   -> {"event":1}  (1 = houve clique desde a última leitura)
 
+  O ESP32 também serve o próprio app (aba web_content.ino, gerado a partir
+  de goodwe-mobile.html) em http://192.168.4.1/ — é só conectar o celular
+  na rede "GoodWe-Demo" e abrir esse endereço no navegador, sem precisar
+  de notebook nem internet. E guarda o estado do app num "quadro
+  compartilhado" simples, pra dois celulares conseguirem ficar
+  sincronizados entre si (cada um manda o que muda e pergunta pelo que
+  mudou, ver o SYNC no goodwe-mobile.html):
+
+  Endpoint do estado: GET /state   -> devolve o último estado recebido
+                       POST /state -> corpo é o novo estado (substitui o anterior)
+
   BIBLIOTECAS NECESSÁRIAS (Arduino IDE > Sketch > Include Library > Manage Libraries):
     - "Adafruit NeoPixel" (Adafruit)
   PLACA: qualquer board ESP32 (Tools > Board > ESP32 Dev Module, por exemplo)
@@ -49,6 +60,8 @@ WebServer server(80);
 
 uint8_t targetR = 0, targetG = 0, targetB = 0;
 int fillPct = 0; // usado só no mode=3 (enchendo)
+
+String sharedState = ""; // "quadro compartilhado": último estado que algum celular mandou
 
 bool lastRawReading = HIGH;         // última leitura bruta do pino (pode "tremer")
 bool stableState = HIGH;            // estado já confirmado como estável (HIGH = solto, LOW = pressionado)
@@ -121,7 +134,18 @@ void handleLed() {
 
 void handleRoot() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.send(200, "text/plain", "GoodWe demo LED online");
+  server.send(200, "text/html; charset=utf-8", INDEX_HTML); // definido em web_content.ino
+}
+
+void handleStateGet() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(200, "application/json", sharedState.length() ? sharedState : "{}");
+}
+
+void handleStatePost() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  if (server.hasArg("plain")) sharedState = server.arg("plain"); // corpo bruto do POST
+  server.send(200, "text/plain", "ok");
 }
 
 // roda em todo loop() — detecta a borda de descida (soltou -> apertou) com debounce
@@ -169,6 +193,8 @@ void setup() {
   server.on("/", handleRoot);
   server.on("/led", handleLed);
   server.on("/button", handleButton);
+  server.on("/state", HTTP_GET, handleStateGet);
+  server.on("/state", HTTP_POST, handleStatePost);
   server.begin();
 }
 

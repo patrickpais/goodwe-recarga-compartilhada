@@ -1205,6 +1205,7 @@
     renderScene();
   }
   function renderScene(){
+    syncPhysicalLed(); // roda sempre, mesmo em builds sem a cena ilustrada (ex: versão mobile)
     const bays = document.getElementById('scene-bays');
     if (!bays) return;
     if (!S.chargers.length){
@@ -1221,7 +1222,6 @@
         <div class="bay-spot">${spotSvg}</div>
       </div>`;
     }).join('');
-    syncPhysicalLed();
   }
 
   /* ---------- LED físico opcional (ESP32 + fita WS2812B) ----------
