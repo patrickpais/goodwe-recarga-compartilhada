@@ -1227,38 +1227,51 @@
   /* ---------- LED físico opcional (ESP32 + fita WS2812B) ----------
      Ligue PHYSICAL_LED.enabled = true quando o ESP32 estiver com o firmware
      esp32-led-demo.ino rodando e o notebook conectado na rede "GoodWe-Demo".
-     chargerIndex é qual carregador (posição em S.chargers) tem o LED físico —
-     0 é "Garagem do Patrick", o carregador que já vem cadastrado por padrão. */
+     Como só existe UM carregador físico de mentira, o LED sempre reflete
+     QUALQUER carregador que estiver com uma sessão ativa no momento
+     (S.chargingIndex) — não um índice fixo — assim funciona mesmo se o
+     motorista escolher um carregador cadastrado depois do padrão. */
   const PHYSICAL_LED = {
     enabled: true,
     url: 'http://192.168.4.1',
-    chargerIndex: 0,
     lastStatus: null,
+    lastPct: null,
   };
+  /* Cores só pra fita física — separadas das cores da tela (STATUS_META).
+     Usamos as cores PURAS (mesmas testadas e confirmadas certas na fita
+     real: r=255/g=0/b=0, r=0/g=255/b=0, r=0/g=0/b=255, r=255/g=255/b=0)
+     em vez das cores "de marca" mais suaves do app, porque essas puras
+     são as que renderizam certinho no LED físico. */
   const LED_RGB = {
-    disponivel:   [53, 119, 241],
-    em_uso:       [242, 176, 30],
-    carregando:   [25, 195, 125],
-    interrompido: [211, 30, 44],
+    disponivel:   [0, 0, 255],
+    em_uso:       [255, 255, 0],
+    carregando:   [0, 255, 0],
+    interrompido: [255, 0, 0],
     oculto:       [0, 0, 0],
   };
   /* modo de animação da fita, ver esp32-led-demo.ino:
-     0 = parado | 1 = respirando (em uso / interrompido) | 2 = correndo (carregando) */
+     0 = parado | 1 = respirando (em uso / interrompido) | 3 = enchendo, tipo medidor de bateria (carregando) */
   const LED_MODE = {
     disponivel:   0,
     em_uso:       1,
-    carregando:   2,
+    carregando:   3,
     interrompido: 1,
     oculto:       0,
   };
   function syncPhysicalLed(){
     if (!PHYSICAL_LED.enabled) return;
-    const status = chargerStatusFor(PHYSICAL_LED.chargerIndex);
-    if (status === PHYSICAL_LED.lastStatus) return;
+    const status = S.chargingIndex !== null ? chargerStatusFor(S.chargingIndex) : 'disponivel';
+    const pct = status === 'carregando' ? Math.round(S.pct) : null;
+    const statusChanged = status !== PHYSICAL_LED.lastStatus;
+    const pctChanged = pct !== null && pct !== PHYSICAL_LED.lastPct;
+    if (!statusChanged && !pctChanged) return;
     PHYSICAL_LED.lastStatus = status;
+    PHYSICAL_LED.lastPct = pct;
     const [r, g, b] = LED_RGB[status];
     const mode = LED_MODE[status];
-    fetch(`${PHYSICAL_LED.url}/led?r=${r}&g=${g}&b=${b}&mode=${mode}`).catch(() => {
+    let url = `${PHYSICAL_LED.url}/led?r=${r}&g=${g}&b=${b}&mode=${mode}`;
+    if (mode === 3) url += `&pct=${pct}`; // "carregando": preenche a fita até essa % da bateria
+    fetch(url).catch(() => {
       /* ESP32 desligado/fora do alcance — ignora silenciosamente, não trava a demo */
     });
   }
@@ -1280,7 +1293,7 @@
   }
   setInterval(pollPhysicalButton, 400);
   function handlePhysicalButtonPress(){
-    if (S.chargingIndex !== PHYSICAL_LED.chargerIndex) return; // nenhuma sessão ativa nesse carregador agora
+    if (S.chargingIndex === null) return; // nenhuma sessão ativa em nenhum carregador agora
     if (S.chargingPhase === 'waiting_plug') beginHandshake();
     else if (S.chargingPhase === 'charging') interruptCharge();
     else if (S.chargingPhase === 'interrupted') resumeCharge();
@@ -1446,6 +1459,7 @@
     all('chg-cost').forEach(el => el.textContent = br(S.kwh * S.price));
     all('chg-time').forEach(el => el.textContent = Math.round(S.secs / 60) + ' min');
     renderChargeScreen();
+    syncPhysicalLed(); // mantém a fita física enchendo em tempo real durante o carregamento
   }
   function finishCharge(auto, p){
     if (!S.charging) return;
@@ -1507,20 +1521,26 @@
       return;
     }
     setCepStatus(p, 'Buscando endereço…', false);
-    let data = null;
+    let data = null, source = 'api';
     try {
       const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
       const json = await res.json();
       if (!json.erro) data = { street: json.logradouro, district: json.bairro, city: `${json.localidade}/${json.uf}` };
-    } catch (e) { /* offline ou bloqueado — usa a base local abaixo */ }
-    if (!data) data = MOCK_CEPS[digits] || null;
+    } catch (e) { /* sem internet (ex: conectado na rede do ESP32) ou bloqueado — usa a base local abaixo */ }
+    if (!data) { data = MOCK_CEPS[digits]; source = 'mock'; }
+    // sem internet e CEP fora da base local: preenche um endereço de exemplo em vez de deixar em branco,
+    // pra não travar o cadastro durante a demonstração (o anfitrião ainda pode editar tudo à mão)
+    if (!data) { data = { street: 'Rua Exemplo', district: 'Bairro Exemplo', city: 'Cidade/UF' }; source = 'placeholder'; }
 
-    $(p + '-addr-street').value = data ? data.street : '';
-    $(p + '-addr-district').value = data ? data.district : '';
-    $(p + '-addr-city').value = data ? data.city : '';
+    $(p + '-addr-street').value = data.street;
+    $(p + '-addr-district').value = data.district;
+    $(p + '-addr-city').value = data.city;
     $(p + '-cep-result').style.display = 'block';
     $(p + '-addr-number').focus();
-    setCepStatus(p, data ? 'Endereço encontrado — confira e complete o número.' : 'CEP não encontrado — preencha o endereço manualmente.', !data);
+    const msg = source === 'api' ? 'Endereço encontrado — confira e complete o número.'
+      : source === 'mock' ? 'Endereço encontrado (base local) — confira e complete o número.'
+      : 'Sem internet no momento — preenchemos um endereço de exemplo, edite como quiser.';
+    setCepStatus(p, msg, source === 'placeholder');
   }
   function stepQty(dir){
     S.newQty = clamp(S.newQty + dir, 1, 20);

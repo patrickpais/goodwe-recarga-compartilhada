@@ -5,13 +5,15 @@
   HTTP simples. O protótipo web manda a cor (RGB) e o modo de animação
   toda vez que o status do carregador muda:
 
-    Disponível   -> azul     parado           (mode=0)
-    Em uso       -> âmbar    respirando       (mode=1)
-    Carregando   -> verde    "correndo"       (mode=2)
-    Interrompido -> vermelho respirando       (mode=1)
-    Indisponível -> apagado                   (mode=0)
+    Disponível   -> azul     parado                          (mode=0)
+    Em uso       -> âmbar    respirando                      (mode=1)
+    Carregando   -> verde    enchendo, tipo medidor de bateria (mode=3, usa &pct=)
+    Interrompido -> vermelho respirando                      (mode=1)
+    Indisponível -> apagado                                  (mode=0)
 
   Endpoint da fita:   GET /led?r=0&g=0&b=255&mode=0
+                       GET /led?r=0&g=255&b=0&mode=3&pct=45  (mode 3: acende os
+                       primeiros pct% dos LEDs, o resto fica apagado)
 
   Já o botão físico simula o plugue sendo conectado/desconectado do carro.
   O ESP32 detecta o clique (com debounce) e guarda um "evento pendente";
@@ -31,8 +33,8 @@
 
 // ---------------- ajuste conforme sua montagem ----------------
 #define LED_PIN     5      // GPIO ligado ao fio DIN (dados) da fita
-#define NUM_LEDS    3      // quantos LEDs ficam dentro do carregador impresso
-#define BRIGHTNESS  200    // 0-255, limite geral de brilho (fita 5V puxa bastante corrente)
+#define NUM_LEDS    300      // quantos LEDs ficam dentro do carregador impresso
+#define BRIGHTNESS  255    // 0-255, limite geral de brilho (fita 5V puxa bastante corrente)
 
 #define BUTTON_PIN  4      // GPIO ligado a uma perna do botão; a outra perna vai direto no GND
                             // (usa o pull-up interno do ESP32, não precisa de resistor)
@@ -46,6 +48,7 @@ Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 WebServer server(80);
 
 uint8_t targetR = 0, targetG = 0, targetB = 0;
+int fillPct = 0; // usado só no mode=3 (enchendo)
 
 bool lastRawReading = HIGH;         // última leitura bruta do pino (pode "tremer")
 bool stableState = HIGH;            // estado já confirmado como estável (HIGH = solto, LOW = pressionado)
@@ -55,7 +58,8 @@ bool buttonEventPending = false;    // true = houve um clique que o app ainda n�
 // modo de animação da fita:
 //   0 = parado (cor fixa)
 //   1 = respirando (pulsa tudo junto, suave)
-//   2 = perseguição (uma luz "corre" pelos LEDs, tipo carregando)
+//   2 = perseguição (uma luz "corre" pelos LEDs) — não usado mais pelo app, mas ainda funciona
+//   3 = enchendo (acende os primeiros fillPct% dos LEDs, tipo medidor de bateria)
 int mode = 0;
 
 void applyBreathe() {
@@ -67,7 +71,7 @@ void applyBreathe() {
 }
 
 void applyChase() {
-  const float speed = 12.0;  // LEDs por segundo — aumente pra ficar mais rapido
+  const float speed = 45.0;  // LEDs por segundo — aumente pra ficar mais rapido
   const float trail = 2.2;   // "comprimento" do rastro em LEDs — aumente pra ficar mais suave/longo
 
   float headPos = fmod(millis() * speed / 1000.0, NUM_LEDS);
@@ -88,9 +92,19 @@ void applyStatic() {
   strip.show();
 }
 
+void applyFill() {
+  int litCount = (NUM_LEDS * fillPct) / 100; // quantos LEDs, contando do inicio da fita, ficam acesos
+  uint32_t c = strip.Color(targetR, targetG, targetB);
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, i < litCount ? c : 0);
+  }
+  strip.show();
+}
+
 void applyColor() {
   if (mode == 1) applyBreathe();
   else if (mode == 2) applyChase();
+  else if (mode == 3) applyFill();
   else applyStatic();
 }
 
@@ -100,6 +114,7 @@ void handleLed() {
   if (server.hasArg("g")) targetG = server.arg("g").toInt();
   if (server.hasArg("b")) targetB = server.arg("b").toInt();
   if (server.hasArg("mode")) mode = server.arg("mode").toInt();
+  if (server.hasArg("pct")) fillPct = server.arg("pct").toInt();
   applyColor();
   server.send(200, "text/plain", "ok");
 }
