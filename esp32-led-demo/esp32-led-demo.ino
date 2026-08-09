@@ -45,7 +45,7 @@
 
 // ---------------- ajuste conforme sua montagem ----------------
 #define LED_PIN     5      // GPIO ligado ao fio DIN (dados) da fita
-#define NUM_LEDS    290      // quantos LEDs ficam dentro do carregador impresso
+#define NUM_LEDS    276      // quantos LEDs ficam dentro do carregador impresso
 #define BRIGHTNESS  255    // 0-255, limite geral de brilho (fita 5V puxa bastante corrente)
 
 #define BUTTON_PIN  4      // GPIO ligado a uma perna do botão; a outra perna vai direto no GND
@@ -134,8 +134,17 @@ void handleLed() {
 }
 
 void handleRoot() {
+  // manda em pedaços de 2KB em vez de tudo de uma vez só — com ~108KB de
+  // página, um único send() pode falhar/truncar silenciosamente em ESP32
   server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.send(200, "text/html; charset=utf-8", INDEX_HTML); // definido em web_content.h
+  size_t total = strlen(INDEX_HTML);
+  server.setContentLength(total);
+  server.send(200, "text/html; charset=utf-8", "");
+  const size_t CHUNK = 2048;
+  for (size_t i = 0; i < total; i += CHUNK) {
+    size_t len = (total - i < CHUNK) ? (total - i) : CHUNK;
+    server.sendContent(INDEX_HTML + i, len);
+  }
 }
 
 void handleStateGet() {
