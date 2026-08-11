@@ -45,7 +45,7 @@
 
 // ---------------- ajuste conforme sua montagem ----------------
 #define LED_PIN     5      // GPIO ligado ao fio DIN (dados) da fita
-#define NUM_LEDS    276      // quantos LEDs ficam dentro do carregador impresso
+#define NUM_LEDS    255      // quantos LEDs ficam dentro do carregador impresso
 #define BRIGHTNESS  255    // 0-255, limite geral de brilho (fita 5V puxa bastante corrente)
 
 #define BUTTON_PIN  4      // GPIO ligado a uma perna do botão; a outra perna vai direto no GND
