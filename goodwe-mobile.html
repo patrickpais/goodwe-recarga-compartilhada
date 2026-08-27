@@ -1280,12 +1280,30 @@
     if (!PHYSICAL_LED.enabled) return;
     fetch(`${PHYSICAL_LED.url}/button`)
       .then(r => r.json())
-      .then(data => { if (data && data.event) handlePhysicalButtonPress(); })
+      .then(data => {
+        if (!data) return;
+        if (data.long) resetDemo();          // aperto de 1,5s+ = reset geral da demo
+        else if (data.event) handlePhysicalButtonPress();
+      })
       .catch(() => {
         /* ESP32 desligado/fora do alcance — ignora silenciosamente, não trava a demo */
       });
   }
   setInterval(pollPhysicalButton, 400);
+  /* Reset geral da demonstração (aperto longo no botão físico): limpa qualquer
+     sessão pendurada — inclusive uma recarga interrompida que nunca foi
+     finalizada, cujo progresso guardado faria a próxima "carga" terminar em
+     1-2s — e devolve tudo ao estado inicial, com o LED azul. A mudança é
+     estrutural, então o sync empurra o estado limpo pro outro celular também. */
+  function resetDemo(){
+    clearInterval(S.timer); clearTimeout(S.connectTimer);
+    S.timer = null; S.connectTimer = null;
+    S.charging = false; S.chargingIndex = null; S.chargingPhase = null;
+    S.kwh = 0; S.pct = START_PCT; S.secs = 0; S.targetPct = 80; S.pendingHost = 0;
+    setBox(false);
+    renderMapList(); renderChargersList(); renderChargeTarget(); renderCharge();
+    PHONES.forEach(p => go(p + '-scr-home'));
+  }
   function handlePhysicalButtonPress(){
     if (S.chargingIndex === null) return; // nenhuma sessão ativa em nenhum carregador agora
     if (S.chargingPhase === 'waiting_plug') beginHandshake();

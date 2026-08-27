@@ -23,7 +23,10 @@
   o navegador pergunta a cada ~400ms se houve clique novo, e o evento é
   apagado assim que é lido — assim nenhum clique se perde nem se repete.
 
-  Endpoint do botão:  GET /button   -> {"event":1}  (1 = houve clique desde a última leitura)
+  Endpoint do botão:  GET /button   -> {"event":1,"long":0}
+                       event=1: clique curto desde a última leitura (plugue)
+                       long=1:  aperto de 1,5s+ (reset geral da demonstração —
+                                limpa sessões penduradas, tudo volta ao início)
 
   O ESP32 também serve o próprio app (arquivo web_content.h, gerado a partir
   de goodwe-mobile.html) em http://192.168.4.1/ — é só conectar o celular
@@ -48,7 +51,7 @@
 
 // ---------------- ajuste conforme sua montagem ----------------
 #define LED_PIN     5      // GPIO ligado ao fio DIN (dados) da fita
-#define NUM_LEDS    8      // quantos LEDs de fato estao colados atras do W vazado
+#define NUM_LEDS    6      // quantos LEDs de fato estao colados atras do W vazado
                             // IMPORTANTE: ajuste pro numero REAL do pedaco cortado —
                             // se for maior que o real, as animacoes "somem" no trecho
                             // que nao existe; se for menor, sobram LEDs apagados
@@ -73,7 +76,10 @@ String sharedState = ""; // "quadro compartilhado": último estado que algum cel
 bool lastRawReading = HIGH;         // última leitura bruta do pino (pode "tremer")
 bool stableState = HIGH;            // estado já confirmado como estável (HIGH = solto, LOW = pressionado)
 unsigned long lastDebounceTime = 0;
-bool buttonEventPending = false;    // true = houve um clique que o app ainda não leu
+unsigned long pressStartedAt = 0;   // quando o aperto atual começou
+bool buttonEventPending = false;      // clique CURTO pendente (plugue conecta/desconecta)
+bool buttonLongEventPending = false;  // aperto LONGO pendente (>=1,5s: reset geral da demo)
+const unsigned long LONGPRESS_MS = 1500;
 
 // modo de animação da fita:
 //   0 = parado (cor fixa)
@@ -167,7 +173,8 @@ void handleStatePost() {
   server.send(200, "text/plain", "ok");
 }
 
-// roda em todo loop() — detecta a borda de descida (soltou -> apertou) com debounce
+// roda em todo loop() — o evento é decidido ao SOLTAR o botão, pra dar
+// pra diferenciar clique curto (plugue) de aperto longo (reset da demo)
 void checkButton() {
   bool reading = digitalRead(BUTTON_PIN);
   if (reading != lastRawReading) {
@@ -179,8 +186,16 @@ void checkButton() {
     if (reading != stableState) {
       stableState = reading;
       if (stableState == LOW) {
-        buttonEventPending = true; // clique confirmado (já filtrado o "chiado" do contato)
-        Serial.println("Botao pressionado");
+        pressStartedAt = millis();          // começou a apertar — só marca a hora
+      } else {
+        // soltou: decide se foi curto ou longo
+        if (millis() - pressStartedAt >= LONGPRESS_MS) {
+          buttonLongEventPending = true;
+          Serial.println("Botao: aperto LONGO (reset da demo)");
+        } else {
+          buttonEventPending = true;
+          Serial.println("Botao: clique curto (plugue)");
+        }
       }
     }
   }
@@ -188,8 +203,10 @@ void checkButton() {
 
 void handleButton() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
-  String json = String("{\"event\":") + (buttonEventPending ? "1" : "0") + "}";
-  buttonEventPending = false; // consome o evento — só reporta cada clique uma vez
+  String json = String("{\"event\":") + (buttonEventPending ? "1" : "0")
+              + ",\"long\":" + (buttonLongEventPending ? "1" : "0") + "}";
+  buttonEventPending = false;     // consome os eventos — cada um só é reportado uma vez
+  buttonLongEventPending = false;
   server.send(200, "application/json", json);
 }
 
