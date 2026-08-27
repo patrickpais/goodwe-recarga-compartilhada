@@ -7,13 +7,16 @@
 
     Disponível   -> azul     parado                          (mode=0)
     Em uso       -> âmbar    respirando                      (mode=1)
-    Carregando   -> verde    enchendo, tipo medidor de bateria (mode=3, usa &pct=)
+    Carregando   -> verde    correndo/girando continuo       (mode=2)
     Interrompido -> vermelho respirando                      (mode=1)
     Indisponível -> apagado                                  (mode=0)
 
+  (Na capa impressa em 3D, os LEDs ficam atras do W vazado — o verde
+  girando pelo logo e o efeito do carregamento. O antigo mode=3,
+  "enchendo tipo bateria" com &pct=, continua implementado mas o app
+  nao usa mais: com poucos LEDs atras do recorte ele nao rendia.)
+
   Endpoint da fita:   GET /led?r=0&g=0&b=255&mode=0
-                       GET /led?r=0&g=255&b=0&mode=3&pct=45  (mode 3: acende os
-                       primeiros pct% dos LEDs, o resto fica apagado)
 
   Já o botão físico simula o plugue sendo conectado/desconectado do carro.
   O ESP32 detecta o clique (com debounce) e guarda um "evento pendente";
@@ -45,8 +48,11 @@
 
 // ---------------- ajuste conforme sua montagem ----------------
 #define LED_PIN     5      // GPIO ligado ao fio DIN (dados) da fita
-#define NUM_LEDS    255      // quantos LEDs ficam dentro do carregador impresso
-#define BRIGHTNESS  255    // 0-255, limite geral de brilho (fita 5V puxa bastante corrente)
+#define NUM_LEDS    8      // quantos LEDs de fato estao colados atras do W vazado
+                            // IMPORTANTE: ajuste pro numero REAL do pedaco cortado —
+                            // se for maior que o real, as animacoes "somem" no trecho
+                            // que nao existe; se for menor, sobram LEDs apagados
+#define BRIGHTNESS  255    // 0-255, limite geral de brilho
 
 #define BUTTON_PIN  4      // GPIO ligado a uma perna do botão; a outra perna vai direto no GND
                             // (usa o pull-up interno do ESP32, não precisa de resistor)
@@ -85,7 +91,10 @@ void applyBreathe() {
 }
 
 void applyChase() {
-  const float speed = 45.0;  // LEDs por segundo — aumente pra ficar mais rapido
+  // giro continuo pelo W enquanto carrega — calibrado pra fita curta (~8 LEDs):
+  // 12 LEDs/s = ~1,5 voltas por segundo, rapido o bastante pra parecer "girando"
+  // sem virar um borrao. Ajuste fino: speed maior = gira mais rapido.
+  const float speed = 12.0;  // LEDs por segundo
   const float trail = 2.2;   // "comprimento" do rastro em LEDs — aumente pra ficar mais suave/longo
 
   float headPos = fmod(millis() * speed / 1000.0, NUM_LEDS);

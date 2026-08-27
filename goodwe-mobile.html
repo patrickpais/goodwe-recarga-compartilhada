@@ -1236,11 +1236,14 @@
     oculto:       [0, 0, 0],
   };
   /* modo de animação da fita, ver esp32-led-demo.ino:
-     0 = parado | 1 = respirando (em uso / interrompido) | 3 = enchendo, tipo medidor de bateria (carregando) */
+     0 = parado | 1 = respirando (em uso / interrompido) | 2 = correndo/girando (carregando)
+     Com o W vazado da capa impressa, poucos LEDs ficam atrás do recorte —
+     o antigo modo 3 (enchendo tipo bateria) não rende visualmente; o verde
+     girando contínuo pelo W ficou sendo o efeito do "carregando". */
   const LED_MODE = {
     disponivel:   0,
     em_uso:       1,
-    carregando:   3,
+    carregando:   2,
     interrompido: 1,
     oculto:       0,
   };
@@ -1250,16 +1253,18 @@
     // se ele foi desativado (oculto); durante uma sessão, segue quem está carregando
     const idx = S.chargingIndex !== null ? S.chargingIndex : 0;
     const status = S.chargers.length ? chargerStatusFor(idx) : 'oculto';
-    const pct = status === 'carregando' ? Math.round(S.pct) : null;
+    const mode = LED_MODE[status];
+    // só o modo 3 (enchendo, hoje sem uso) depende da % — nos demais, o progresso
+    // da bateria não muda nada na fita, então não gera reenvio a cada tick
+    const pct = mode === 3 ? Math.round(S.pct) : null;
     const statusChanged = status !== PHYSICAL_LED.lastStatus;
     const pctChanged = pct !== null && pct !== PHYSICAL_LED.lastPct;
     if (!statusChanged && !pctChanged) return;
     PHYSICAL_LED.lastStatus = status;
     PHYSICAL_LED.lastPct = pct;
     const [r, g, b] = LED_RGB[status];
-    const mode = LED_MODE[status];
     let url = `${PHYSICAL_LED.url}/led?r=${r}&g=${g}&b=${b}&mode=${mode}`;
-    if (mode === 3) url += `&pct=${pct}`; // "carregando": preenche a fita até essa % da bateria
+    if (mode === 3) url += `&pct=${pct}`;
     fetch(url).catch(() => {
       /* ESP32 desligado/fora do alcance — ignora silenciosamente, não trava a demo */
     });
