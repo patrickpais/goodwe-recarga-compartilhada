@@ -26,7 +26,7 @@
 #include <Adafruit_NeoPixel.h>
 
 #define LED_PIN     5
-#define NUM_LEDS    3
+#define NUM_LEDS    8      // mesmo numero de LEDs colados atras do W vazado
 #define BRIGHTNESS  200
 
 #define BUTTON_PIN  4      // GPIO ligado a uma perna do botão; a outra perna vai no GND
