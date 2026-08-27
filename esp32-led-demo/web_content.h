@@ -1324,6 +1324,11 @@ const char INDEX_HTML[] = R"HTMLDELIM(<meta charset="utf-8">
     S.charging = false; S.chargingIndex = null; S.chargingPhase = null;
     S.kwh = 0; S.pct = START_PCT; S.secs = 0; S.targetPct = 80; S.pendingHost = 0;
     setBox(false);
+    // força o próximo syncTick a EMPURRAR o estado limpo pro quadro do ESP32,
+    // mesmo que a estrutura pareça "igual" (após uma recarga concluída, o reset
+    // quase não muda campos estruturais — sem isso, os zeros nunca subiam e o
+    // quadro continuava com os kWh finais da recarga anterior)
+    SYNC.lastKnownContent = null;
     renderMapList(); renderChargersList(); renderChargeTarget(); renderCharge();
     PHONES.forEach(p => go(p + '-scr-home'));
   }
@@ -1901,9 +1906,14 @@ const char INDEX_HTML[] = R"HTMLDELIM(<meta charset="utf-8">
           SYNC.lastKnownContent = structuralContent();
           changed = true;
         }
-        if (!S.timer && typeof remote.kwh === 'number'){
-          // não temos cronômetro real rodando aqui: sempre espelha os números
-          // de quem tem (não compete por revisão, só reflete)
+        if (!S.timer && typeof remote.kwh === 'number'
+            && (remote.chargingPhase === 'charging' || remote.chargingPhase === 'interrupted')){
+          // não temos cronômetro real rodando aqui: espelha os números de quem
+          // tem — MAS só enquanto existe uma recarga ativa de verdade. Sem essa
+          // trava, os kWh/% finais da recarga ANTERIOR (que ficam guardados no
+          // quadro do ESP32) eram "espelhados de volta" logo após um reset ou um
+          // novo início, e a recarga nova nascia quase completa — era o bug da
+          // carga que terminava em 1 segundo.
           if (S.kwh !== remote.kwh || S.pct !== remote.pct || S.secs !== remote.secs){
             S.kwh = remote.kwh; S.pct = remote.pct; S.secs = remote.secs;
             changed = true;
