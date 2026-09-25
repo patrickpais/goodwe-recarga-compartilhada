@@ -5757,7 +5757,7 @@ class Component extends DCLogic {
     anfChargers: [{ id: 'a1', nome: 'Garagem · HCA G2', sub: 'GoodWe HCA G2 7 kW · uso privado', pub: true }],
     spotId: 's1', fav: ['s1'], mapFilter: 'Todos', histFilter: 'Todos',
     goal: 80, pctIni: 41, method: 'pix', modo: null, metaKm: 120, metaMin: 45, metaKwhDireto: 20,
-    sess: null, running: false, interrupted: false, plugged: false, receipt: null, stars: 0,
+    sess: null, running: false, interrupted: false, plugged: false, hwOnline: false, receipt: null, stars: 0,
     saldo: 48.2,
     base: 2.10, solar: 'alto', ponta: false,
     kwp: 96, reserva: 30,
@@ -5793,7 +5793,12 @@ class Component extends DCLogic {
       const opts = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? { signal: AbortSignal.timeout(2500) } : {};
       fetch(u + '/state', opts)
         .then(r => {
-          if (r.ok && !this._hwUrl) { this._hwUrl = u; this._hwLast = null; this.hwSet('disponivel'); }
+          if (r.ok && !this._hwUrl) {
+            this._hwUrl = u;
+            this._hwLast = null;
+            this.setState({ hwOnline: true });   // com o carregador na mesa, o plugue passa a ser exigido
+            this.hwSet('disponivel');
+          }
         })
         .catch(() => {});
     });
@@ -5973,8 +5978,8 @@ class Component extends DCLogic {
       this.say('Defina uma meta acima dos ' + this.state.pctIni + '% atuais para liberar a carga.');
       return;
     }
-    // com o carregador físico na mesa, o cabo precisa estar no carro primeiro
-    if (this.props.hardwareFisico !== false && !this.state.plugged) {
+    // com o carregador físico na mesa (e respondendo), o cabo precisa estar no carro
+    if (this.props.hardwareFisico !== false && this.state.hwOnline && !this.state.plugged) {
       this.say('Conecte o cabo no carro — aperte o botão do carregador — para liberar a carga.');
       return;
     }
@@ -7115,8 +7120,8 @@ class Component extends DCLogic {
       })(),
       metaValida: this.metaKwh() > 0.05,
       liberarBg: this.metaKwh() > 0.05 ? '#f5333f' : '#e3b2b7',
-      liberarCargaBg: this.metaKwh() > 0.05 && (this.props.hardwareFisico === false || s.plugged) ? '#f5333f' : '#e3b2b7',
-      plugStatusTxt: this.props.hardwareFisico === false ? ''
+      liberarCargaBg: this.metaKwh() > 0.05 && (this.props.hardwareFisico === false || !s.hwOnline || s.plugged) ? '#f5333f' : '#e3b2b7',
+      plugStatusTxt: this.props.hardwareFisico === false || !s.hwOnline ? ''
         : s.plugged ? '🟡 Plugue conectado ao veículo — pronto para liberar'
         : '🔌 Conecte o cabo no carro (botão do carregador) para liberar',
       plugStatusFg: s.plugged ? '#b97a08' : '#7c8494',
