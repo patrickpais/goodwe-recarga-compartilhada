@@ -1,0 +1,17 @@
+<!-- @dsCard group="Ações" height=190 -->
+<div id="root" style="padding:22px;background:var(--surface-page)"></div>
+<script>
+  var C = window.ChargeGrid, h = React.createElement;
+  var row = function (children) { return h('div', { style: { display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 } }, children); };
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', null,
+      row([
+        h(C.Button, { key: 1 }, 'Liberar carga'),
+        h(C.Button, { key: 2, variant: 'secondary' }, 'Adicionar manualmente'),
+        h(C.Button, { key: 3, variant: 'ghost' }, 'Cadastrar depois'),
+        h(C.Button, { key: 4, disabled: true }, 'Sem conexão')
+      ]),
+      h(C.Button, { block: true, icon: '⚡' }, 'Confirmar recarga')
+    )
+  );
+</script>

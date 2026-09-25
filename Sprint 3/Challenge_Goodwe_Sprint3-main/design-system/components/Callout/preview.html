@@ -1,0 +1,17 @@
+<!-- @dsCard group="Estado" height=280 -->
+<div id="root" style="padding:22px;background:var(--surface-page)"></div>
+<script>
+  var C = window.ChargeGrid, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 460 } },
+      h(C.Callout, { key: 1, tone: 'info', title: 'Pré-autorização' },
+        'Reservamos R$ 42,00 no seu cartão e cobramos apenas os kWh entregues ao final.'),
+      h(C.Callout, { key: 2, tone: 'reduced', title: 'Potência reduzida para 4,1 kW' },
+        'A galeria está protegendo o disjuntor geral. Sua recarga continua; a previsão passou para 19:05.'),
+      h(C.Callout, { key: 3, tone: 'danger', title: 'Falha na comunicação com o carregador' },
+        'Nada foi cobrado. Tente de novo ou fale com o suporte.'),
+      h(C.Callout, { key: 4, tone: 'success', title: 'Recarga concluída' },
+        '31,0 kWh entregues. Cobramos R$ 34,72 e o recibo foi enviado por e-mail.')
+    )
+  );
+</script>

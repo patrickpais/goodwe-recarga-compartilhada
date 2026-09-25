@@ -1,0 +1,50 @@
+<!-- @dsCard height=320 -->
+<div id="cg-cover" style="background:var(--surface-page)">
+  <svg viewBox="0 0 960 320" width="960" height="320" role="img" aria-label="ChargeGrid Intelligence" style="display:block;width:100%;height:auto">
+    <!-- blocos: brand 360px, solar 152px, battery 96px, surface-inverse 344px — larguras em múltiplos de space-2 (8px), banda de 104px -->
+    <!-- arranjo: faixa de bandas desiguais atravessando o topo, sangrando nas duas bordas, cantos cortados por radius-3xl (22px) -->
+    <!-- padrão: pílulas escalonadas sobre o bloco de tinta — o sistema fala em raio máximo (radius-pill 99px) e sua peça-assinatura é a barra de mix energético empilhada -->
+    <!-- escalas: pitch e alturas em space-2 e space-4 (8px, 12px), rx = metade do lado curto (8px), banda com rx = radius-3xl -->
+    <defs>
+      <clipPath id="cgBand"><rect x="0" y="0" width="960" height="104" rx="22"/></clipPath>
+    </defs>
+    <g clip-path="url(#cgBand)">
+      <rect class="cg-brand"   x="0"   y="0" width="368" height="104"/>
+      <rect class="cg-solar"   x="368" y="0" width="152" height="104"/>
+      <rect class="cg-battery" x="520" y="0" width="96"  height="104"/>
+      <rect class="cg-deep"    x="616" y="0" width="344" height="104"/>
+
+      <rect class="cg-solar"   x="640" y="20" width="120" height="16" rx="8"/>
+      <rect class="cg-battery" x="768" y="20" width="64"  height="16" rx="8"/>
+      <rect class="cg-info"    x="844" y="20" width="40"  height="16" rx="8"/>
+
+      <rect class="cg-battery" x="640" y="44" width="72"  height="16" rx="8"/>
+      <rect class="cg-solar"   x="724" y="44" width="152" height="16" rx="8"/>
+
+      <rect class="cg-info"    x="640" y="68" width="48"  height="16" rx="8"/>
+      <rect class="cg-solar"   x="700" y="68" width="96"  height="16" rx="8"/>
+      <rect class="cg-battery" x="808" y="68" width="112" height="16" rx="8"/>
+
+      <rect class="cg-deep"    x="120" y="32" width="88" height="40" rx="20"/>
+      <rect class="cg-deep"    x="220" y="32" width="40" height="40" rx="20"/>
+    </g>
+
+    <text class="cg-name" x="48" y="206">ChargeGrid</text>
+    <text class="cg-name" x="48" y="264">Intelligence</text>
+    <text class="cg-tag"  x="48" y="292">Toda wallbox é um posto de recarga.</text>
+  </svg>
+</div>
+<script>
+  var css = document.createElement('style');
+  css.textContent = [
+    '#cg-cover{padding:0;margin:0}',
+    '#cg-cover .cg-brand{fill:var(--brand)}',
+    '#cg-cover .cg-solar{fill:var(--solar)}',
+    '#cg-cover .cg-battery{fill:var(--battery)}',
+    '#cg-cover .cg-info{fill:var(--info)}',
+    '#cg-cover .cg-deep{fill:var(--surface-inverse)}',
+    '#cg-cover .cg-name{fill:var(--ink);font-family:var(--font-sans);font-weight:900;font-size:64px;letter-spacing:-.02em}',
+    '#cg-cover .cg-tag{fill:var(--ink-muted-strong);font-family:var(--font-sans);font-weight:700;font-size:14px}'
+  ].join('');
+  document.head.appendChild(css);
+</script>

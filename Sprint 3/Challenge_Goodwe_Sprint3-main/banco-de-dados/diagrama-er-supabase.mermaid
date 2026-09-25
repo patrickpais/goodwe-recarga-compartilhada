@@ -1,0 +1,189 @@
+%% Diagrama ER completo — recarga compartilhada (GoodWe)
+%% Tabelas novas: galerias, leituras_energia, alocacoes_potencia
+%% Tabela alterada: carregadores
+
+erDiagram
+
+    usuarios ||--o{ galerias : "e anfitriao de"
+    usuarios ||--o{ veiculos : "possui"
+    usuarios ||--o{ recargas : "faz como motorista"
+    usuarios ||--o{ contas_repasse : "possui"
+
+    enderecos ||--o{ galerias : "localiza"
+    galerias ||--o{ carregadores : "agrupa"
+    galerias ||--o{ leituras_energia : "reporta"
+
+    modelos_carregador ||--o{ carregadores : "e o modelo de"
+
+    carregadores ||--o{ disponibilidades : "abre janelas"
+    carregadores ||--o{ recargas : "atende"
+
+    veiculos ||--o{ recargas : "carrega em"
+
+    recargas ||--o{ recarga_eventos : "registra transicoes"
+    recargas ||--o{ alocacoes_potencia : "recebe ajustes de"
+    recargas ||--o| pagamentos : "gera"
+    recargas ||--o| avaliacoes : "classifica"
+
+    pagamentos ||--o| repasses : "dispara split 90/10"
+    contas_repasse ||--o{ repasses : "recebe"
+
+
+    usuarios {
+        bigint id PK
+        string nome
+        string email UK
+        string senha_hash
+        string cpf UK
+        string telefone
+        timestamp criado_em
+    }
+
+
+    enderecos {
+        bigint id PK
+        string cep
+        string logradouro
+        string numero
+        string complemento
+        string bairro
+        string cidade
+        string uf
+        decimal latitude
+        decimal longitude
+    }
+
+
+    galerias {
+        bigint id PK
+        bigint endereco_id FK
+        bigint anfitriao_id FK
+        string nome
+        decimal demanda_contratada_kw
+        timestamp criado_em
+    }
+
+
+    modelos_carregador {
+        string codigo PK
+        decimal potencia_kw
+        string descricao
+    }
+
+
+    carregadores {
+        bigint id PK
+        bigint galeria_id FK
+        string modelo_codigo FK
+        string numero_serie UK
+        string nome
+        decimal preco_kwh
+        boolean publicado
+        timestamp criado_em
+    }
+
+
+    disponibilidades {
+        bigint id PK
+        bigint carregador_id FK
+        smallint dia_semana
+        time hora_inicio
+        time hora_fim
+    }
+
+
+    veiculos {
+        bigint id PK
+        bigint motorista_id FK
+        string marca
+        string modelo
+        string apelido
+        decimal capacidade_bateria_kwh
+    }
+
+
+    recargas {
+        bigint id PK
+        bigint carregador_id FK
+        bigint motorista_id FK
+        bigint veiculo_id FK
+        string status_recarga
+        smallint pct_inicial
+        smallint meta_pct
+        decimal preco_kwh_aplicado
+        decimal kwh_entregue
+        timestamp iniciada_em
+        timestamp finalizada_em
+        timestamp criado_em
+    }
+
+
+    recarga_eventos {
+        bigint id PK
+        bigint recarga_id FK
+        string status_recarga
+        timestamp ocorrido_em
+    }
+
+
+    leituras_energia {
+        bigint id PK
+        bigint galeria_id FK
+        decimal potencia_disponivel_ev_kw
+        decimal potencia_total_utilizada_kw
+        timestamp ocorrido_em
+    }
+
+
+    alocacoes_potencia {
+        bigint id PK
+        bigint recarga_id FK
+        decimal potencia_alocada_kw
+        timestamp ocorrido_em
+    }
+
+
+    pagamentos {
+        bigint id PK
+        bigint recarga_id FK
+        string metodo_pagamento
+        string status_pagamento
+        decimal valor_autorizado
+        decimal valor_total
+        decimal taxa_plataforma
+        decimal valor_anfitriao
+        timestamp autorizado_em
+        timestamp processado_em
+        timestamp recibo_enviado_em
+    }
+
+
+    contas_repasse {
+        bigint id PK
+        bigint usuario_id FK
+        string tipo_conta_repasse
+        string chave_pix
+        string banco
+        string agencia
+        string conta
+        timestamp criado_em
+    }
+
+
+    repasses {
+        bigint id PK
+        bigint pagamento_id FK
+        bigint conta_repasse_id FK
+        decimal valor
+        string status_repasse
+        timestamp processado_em
+    }
+
+
+    avaliacoes {
+        bigint id PK
+        bigint recarga_id FK
+        smallint nota
+        string comentario
+        timestamp criado_em
+    }

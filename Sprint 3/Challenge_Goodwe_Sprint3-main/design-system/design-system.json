@@ -1,0 +1,22 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": { "v": 1, "at": "2026-09-16T17:48:18Z" },
+  "title": "ChargeGrid Intelligence",
+  "namespace": "ChargeGrid",
+  "libraries": [
+    { "name": "react", "version": "18" },
+    { "name": "react-dom", "version": "18" }
+  ],
+  "sections": {},
+  "groups": [],
+  "assetGroups": {},
+  "blobs": {},
+  "docs": { "readme": "project/README.md", "sections": [] },
+  "lastChange": {
+    "by": "Denize",
+    "at": "2026-09-16T17:48:18Z",
+    "via": "Cowork",
+    "note": "Sistema inicial extraído do canvas ChargeGrid - App no Claude Design"
+  }
+}

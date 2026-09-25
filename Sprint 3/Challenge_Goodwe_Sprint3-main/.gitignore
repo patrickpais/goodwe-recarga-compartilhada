@@ -1,0 +1,25 @@
+# Sistema operacional
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Temporários do Office / LibreOffice
+~$*
+*.tmp
+~WRL*.tmp
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+
+# Arduino
+build/
+*.hex
+*.elf
+*.bin

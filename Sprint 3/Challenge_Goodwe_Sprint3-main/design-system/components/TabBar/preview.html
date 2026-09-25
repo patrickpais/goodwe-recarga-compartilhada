@@ -1,0 +1,33 @@
+<!-- @dsCard group="Navegação" height=230 -->
+<div id="root" style="padding:22px;background:var(--surface-page)"></div>
+<script>
+  var C = window.ChargeGrid, h = React.createElement;
+  var shell = { maxWidth: 360, border: '1px solid var(--border)', borderRadius: 'var(--radius-3xl)', overflow: 'hidden', background: 'var(--surface-card)' };
+  var cap = { font: '800 10.5px/1 Nunito, system-ui, sans-serif', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-muted-strong)', padding: '14px 16px 0' };
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { style: { display: 'flex', gap: 16, flexWrap: 'wrap' } },
+      h('div', { style: shell },
+        h('div', { style: cap }, 'Motorista'),
+        h(C.TabBar, {
+          active: 'carga',
+          items: [
+            { key: 'inicio', label: 'Início', glyph: '◱' },
+            { key: 'casa', label: 'Casa', glyph: '⌂' },
+            { key: 'carga', label: 'Carga', glyph: '⚡' },
+            { key: 'impacto', label: 'Impacto', glyph: '☘' }
+          ]
+        })),
+      h('div', { style: shell },
+        h('div', { style: cap }, 'Gestor'),
+        h(C.TabBar, {
+          active: 'painel',
+          items: [
+            { key: 'inicio', label: 'Início', glyph: '◱' },
+            { key: 'painel', label: 'Painel', glyph: '◔', dot: true },
+            { key: 'tarifa', label: 'Tarifa', glyph: '$' },
+            { key: 'sindico', label: 'Síndico', glyph: '○' }
+          ]
+        }))
+    )
+  );
+</script>

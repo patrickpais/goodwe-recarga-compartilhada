@@ -1,0 +1,13 @@
+<!-- @dsCard group="Energia" height=160 -->
+<div id="root" style="padding:22px;background:var(--surface-page)"></div>
+<script>
+  var C = window.ChargeGrid, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { style: { display: 'flex', gap: 12, flexWrap: 'wrap' } },
+      h(C.MetricTile, { key: 1, value: '4,8', unit: 'kW', label: 'Geração agora' }),
+      h(C.MetricTile, { key: 2, value: '101,5', unit: 'kWh', label: 'Em casa no mês', tone: 'solar' }),
+      h(C.MetricTile, { key: 3, value: 'R$ 68,09', label: 'Economia no mês', tone: 'battery', note: '30 dias no mesmo perfil' }),
+      h(C.MetricTile, { key: 4, value: '38', unit: 'kg', label: 'CO₂ evitado', tone: 'inverse', note: 'Equivale a 2 árvores' })
+    )
+  );
+</script>

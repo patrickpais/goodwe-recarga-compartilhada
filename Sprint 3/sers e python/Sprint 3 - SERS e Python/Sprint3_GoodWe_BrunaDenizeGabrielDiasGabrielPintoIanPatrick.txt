@@ -1,0 +1,20 @@
+SPRINT 3 
+ChargeGrid Intelligence 
+
+RM | NOME | PAPEL
+
+572899	Patrick Fernandes Martins Pais	Scrum Master
+571836	Bruna Yukimy Hada		Desenvolvedora
+571562	Denize Ferrante			Desenvolvedora
+570436	Gabriel Del Pizzo Pintor	Desenvolvedor
+572395	Gabriel Dias Menezes		Desenvolvedor
+570540	Ian Rodrigues Martins		Desenvolvedor
+
+
+GITHUB: 
+https://github.com/denizeferrante/Challenge_Goodwe_Sprint3
+
+VÍDEO
+https://www.youtube.com/watch?v=VSHhU_l0mKA
+
+

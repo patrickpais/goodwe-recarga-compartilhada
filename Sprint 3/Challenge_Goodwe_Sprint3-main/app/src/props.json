@@ -1,0 +1,56 @@
+{
+  "$preview": {
+    "width": 900,
+    "height": 1020
+  },
+  "estiloEntrada": {
+    "editor": "enum",
+    "options": [
+      "Fotográfico",
+      "Ilustrado"
+    ],
+    "default": "Fotográfico",
+    "tsType": "string",
+    "section": "Tela de entrada"
+  },
+  "duracaoDemo": {
+    "editor": "range",
+    "default": 10,
+    "min": 5,
+    "max": 60,
+    "step": 1,
+    "unit": "s",
+    "tsType": "number",
+    "section": "Demo"
+  },
+  "mostrarFatoresIA": {
+    "editor": "boolean",
+    "default": false,
+    "tsType": "boolean",
+    "section": "Demo"
+  },
+  "hardwareFisico": {
+    "editor": "boolean",
+    "default": true,
+    "tsType": "boolean",
+    "section": "Demo"
+  },
+  "veiculoCadastrado": {
+    "editor": "boolean",
+    "default": true,
+    "tsType": "boolean",
+    "section": "Guardas de navegação"
+  },
+  "parametrizacaoConcluida": {
+    "editor": "boolean",
+    "default": true,
+    "tsType": "boolean",
+    "section": "Guardas de navegação"
+  },
+  "contaRepasseCadastrada": {
+    "editor": "boolean",
+    "default": true,
+    "tsType": "boolean",
+    "section": "Guardas de navegação"
+  }
+}

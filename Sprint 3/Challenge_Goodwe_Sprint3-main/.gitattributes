@@ -1,0 +1,15 @@
+# Normaliza fim de linha: LF no repositório, nativo no checkout
+* text=auto eol=lf
+
+# Binários
+*.png  binary
+*.woff2 binary
+
+# Não conta como código do projeto nas estatísticas do GitHub
+app/vendor/*                linguist-vendored
+app/index.html              linguist-generated
+app/dist/*                  linguist-generated
+design-system/components/bundle.* linguist-vendored
+
+# Mermaid é diagrama, não código
+*.mermaid linguist-documentation

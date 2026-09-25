@@ -1,0 +1,17 @@
+<!-- @dsCard group="Energia" height=150 -->
+<div id="root" style="padding:22px;background:var(--surface-page)"></div>
+<script>
+  var C = window.ChargeGrid, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { style: { maxWidth: 420 } },
+      h('div', { style: { font: '800 10.5px/1 Nunito, system-ui, sans-serif', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-muted-strong)', marginBottom: 10 } }, 'Origem da energia entregue hoje'),
+      h(C.EnergyMixBar, {
+        parts: [
+          { source: 'solar', value: 64 },
+          { source: 'battery', value: 22 },
+          { source: 'grid', value: 14 }
+        ]
+      })
+    )
+  );
+</script>

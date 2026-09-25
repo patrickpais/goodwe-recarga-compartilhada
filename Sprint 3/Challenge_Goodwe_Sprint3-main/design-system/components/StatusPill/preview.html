@@ -1,0 +1,19 @@
+<!-- @dsCard group="Estado" height=150 -->
+<div id="root" style="padding:22px;background:var(--surface-page)"></div>
+<script>
+  var C = window.ChargeGrid, h = React.createElement;
+  var wrap = { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' };
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    h('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
+      h('div', { style: wrap },
+        h(C.StatusPill, { key: 1, status: 'available' }),
+        h(C.StatusPill, { key: 2, status: 'charging', detail: '6,8 kW' }),
+        h(C.StatusPill, { key: 3, status: 'reduced', detail: 'DLM' })),
+      h('div', { style: wrap },
+        h(C.StatusPill, { key: 4, status: 'fault', detail: 'erro 2091' }),
+        h(C.StatusPill, { key: 5, status: 'maintenance', label: 'Manutenção' }),
+        h(C.StatusPill, { key: 6, status: 'idle', detail: 'libera ~18:40' }),
+        h(C.StatusPill, { key: 7, status: 'done', detail: '31,0 kWh' }))
+    )
+  );
+</script>

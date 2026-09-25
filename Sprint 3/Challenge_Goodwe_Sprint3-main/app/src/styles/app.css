@@ -1,0 +1,23 @@
+body{margin:0;background:radial-gradient(120% 90% at 50% 0%,#22262f,#1a1d24);min-height:100vh;font-family:ui-rounded,"SF Pro Rounded",Nunito,Quicksand,"Baloo 2",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#f5333f;text-decoration:none}a:hover{color:#d31e2c}
+@keyframes cgPulse{50%{opacity:.35}}
+@keyframes cgScan{0%,100%{top:12px}50%{top:236px}}
+@keyframes cgRingGlow{0%,100%{filter:brightness(1) saturate(1)}50%{filter:brightness(1.28) saturate(1.15)}}
+@keyframes cgSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes cgFade{from{opacity:0}to{opacity:1}}
+input[type=range]{accent-color:#f5333f;width:100%}
+*::-webkit-scrollbar{width:0;height:0}
+@media (max-width:760px){
+body{background:#0b0d12}
+[data-root="wrap"]{display:block!important;padding:0!important;gap:0!important}
+[data-side="notes"]{display:none!important}
+[data-shell="phone"]{width:100vw!important;height:100svh!important;border-radius:0!important;border:none!important;box-shadow:none!important}
+[data-shell="phone"] [data-notch]{display:none!important}
+}
+  @keyframes fluxoDash { to { stroke-dashoffset: -28; } }
+
+/* Fundo fotografico da tela de entrada.
+   Fica aqui, e nao no style="" do elemento, porque o runtime quebra o
+   atributo style em declaracoes pelo ";" -- e um data: URI (usado na versao
+   de arquivo unico gerada em dist/) tem ";base64," no meio e seria cortado. */
+.bg-tela-entrada{background-image:url("../../assets/img/fundo-tela-entrada.png");background-size:cover;background-position:50% 50%;background-repeat:no-repeat}

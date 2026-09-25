@@ -1,0 +1,2032 @@
+#ifndef WEB_CONTENT_H
+#define WEB_CONTENT_H
+
+/*
+  GoodWe · Recarga Compartilhada — conteúdo da página servida pelo ESP32
+  ------------------------------------------------------------
+  Esse arquivo só tem uma coisa: o HTML/CSS/JS inteiro do app (versão
+  mobile, um celular só) embutido como texto, pra o ESP32 conseguir
+  servir ele direto em http://192.168.4.1/, sem precisar de cartão SD,
+  LittleFS nem nenhum plugin extra de upload de arquivo — só grava esse
+  sketch normalmente que já vem tudo junto.
+
+  É um arquivo .h (cabeçalho comum), não .ino, de propósito: o Arduino
+  tenta "adivinhar" funções dentro de arquivos .ino pra gerar
+  declarações automáticas, e se confunde com a quantidade de chaves e
+  "funcao(){" que existe dentro do JavaScript aqui dentro — um .h não
+  passa por essa adivinhação, só é incluído direto no arquivo principal.
+
+  Pra ATUALIZAR o app: gere de novo esse arquivo a partir do
+  goodwe-mobile.html (peça ajuda pro Claude) e grave o firmware de novo.
+  Editar direto aqui é possível mas nada prático, o texto é grande.
+*/
+
+const char INDEX_HTML[] = R"HTMLDELIM(<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GoodWe · Recarga Compartilhada — App</title>
+<style>
+
+  :root{
+    --backdrop:#1a1d24; --backdrop2:#22262f; --cap-ink:#e8eaef; --cap-muted:#9aa1ad;
+    --red:#f5333f; --red-dark:#d31e2c; --ink:#131c2e; --muted:#7c8494; --faint:#aeb4c0;
+    --bg:#efeff1; --card:#fafafb; --line:#e4e5e9;
+    --blue:#3577f1; --blue-bg:#dee9fc; --good:#149d68; --good-bg:#dcf3ea;
+    --warn:#b97a08; --warn-bg:#faeed3;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --backdrop:#e3e4e8; --backdrop2:#d6d8de; --cap-ink:#1c2333; --cap-muted:#5d6572; }
+  }
+  :root[data-theme="dark"]{ --backdrop:#1a1d24; --backdrop2:#22262f; --cap-ink:#e8eaef; --cap-muted:#9aa1ad; }
+  :root[data-theme="light"]{ --backdrop:#e3e4e8; --backdrop2:#d6d8de; --cap-ink:#1c2333; --cap-muted:#5d6572; }
+
+  *{box-sizing:border-box; margin:0}
+  html,body{height:100%}
+  body{
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Quicksand", "Baloo 2", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(120% 90% at 50% 0%, var(--backdrop2), var(--backdrop));
+    color:var(--cap-ink);
+    display:flex; align-items:center; justify-content:center; gap:48px;
+    padding:32px 20px; min-height:100vh; flex-wrap:wrap;
+  }
+
+  /* ---------- side panel (demo script) ---------- */
+  .side{max-width:300px; display:flex; flex-direction:column; gap:14px}
+  .side h1{font-size:1.35rem; line-height:1.25; text-wrap:balance}
+  .side h1 em{color:var(--red); font-style:normal}
+  .side p{font-size:.85rem; line-height:1.55; color:var(--cap-muted)}
+  .side .steps{display:flex; flex-direction:column; gap:8px; font-size:.8rem}
+  .side .steps div{display:flex; gap:10px; align-items:flex-start; line-height:1.45}
+  .side .steps b{color:var(--red); font-variant-numeric:tabular-nums; flex:none}
+  .jump{display:flex; gap:8px; flex-wrap:wrap}
+  .jump button{
+    font:inherit; font-size:.78rem; font-weight:700; cursor:pointer;
+    padding:8px 14px; border-radius:99px; border:1.5px solid var(--red);
+    background:transparent; color:var(--cap-ink);
+  }
+  .jump button:hover{background:var(--red); color:#fff}
+  .jump button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
+  .tagline{font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--cap-muted)}
+
+  /* ---------- phone ---------- */
+  .phone{
+    width:392px; height:800px; flex:none; position:relative;
+    background:var(--bg); border-radius:52px; overflow:hidden;
+    border:10px solid #0b0d12; box-shadow:0 30px 80px rgba(0,0,0,.45);
+  }
+  .statusbar{
+    position:absolute; top:0; left:0; right:0; height:44px; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 24px; font-size:.82rem; font-weight:800; color:var(--ink);
+    pointer-events:none; transition:color .15s;
+  }
+  .phone:has(.screen.dark-scr.active) .statusbar{color:#f2f3f6}
+  .notch{position:absolute; top:9px; left:50%; transform:translateX(-50%);
+    width:118px; height:28px; background:#0b0d12; border-radius:20px; z-index:41}
+
+  .screen{
+    position:absolute; inset:0; padding:56px 18px 96px; overflow-y:auto;
+    display:none; background:var(--bg); color:var(--ink);
+    scrollbar-width:none;
+  }
+  .screen::-webkit-scrollbar{display:none}
+  .screen.active{display:block}
+  .screen.dark-scr{background:#0e1118; color:#f2f3f6}
+  .screen.no-tab{padding-bottom:24px}
+
+  /* ---------- app primitives ---------- */
+  .h-title{font-size:1.5rem; font-weight:800; letter-spacing:-.01em}
+  .subhead{font-size:1.15rem; font-weight:800; margin:22px 0 12px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px}
+  .btn{
+    display:block; width:100%; font:inherit; font-weight:800; font-size:1.05rem;
+    background:var(--red); color:#fff; border:none; border-radius:99px;
+    padding:15px; cursor:pointer; text-align:center;
+  }
+  .btn:active{transform:scale(.985)}
+  .btn:focus-visible{outline:3px solid var(--red-dark); outline-offset:2px}
+  .btn.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--line); font-size:.92rem; padding:12px}
+  .dark-scr .btn.ghost{color:#f2f3f6; border-color:#333a48}
+  .chip{display:inline-flex; align-items:center; gap:6px; font-size:.75rem; font-weight:700;
+    padding:5px 12px; border-radius:99px}
+  .chip.blue{background:var(--blue-bg); color:var(--blue)}
+  .chip.good{background:var(--good-bg); color:var(--good)}
+  .chip.warn{background:var(--warn-bg); color:var(--warn)}
+  .chip.new{background:var(--red); color:#fff; font-style:italic}
+  .muted{color:var(--muted); font-size:.82rem}
+  .row{display:flex; align-items:center; gap:10px}
+  .spread{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .backbar{display:flex; align-items:center; gap:10px; margin-bottom:16px}
+  .backbar button{font:inherit; border:none; background:var(--card); border:1px solid var(--line);
+    width:38px; height:38px; border-radius:12px; cursor:pointer; font-size:1.05rem; color:var(--ink); font-weight:800}
+  .backbar .h-title{font-size:1.2rem}
+  .money{font-variant-numeric:tabular-nums}
+
+  /* tab bar */
+  .tabbar{
+    position:absolute; bottom:0; left:0; right:0; z-index:30;
+    background:#fff; border-radius:34px 34px 0 0; padding:12px 10px 20px;
+    display:none; justify-content:space-around;
+    box-shadow:0 -8px 24px rgba(19,28,46,.08);
+  }
+  .tabbar.visible{display:flex}
+  .tab{font:inherit; border:none; background:none; cursor:pointer; text-align:center;
+    color:#9aa0ac; font-size:.78rem; font-weight:700; display:flex; flex-direction:column; gap:3px; align-items:center}
+  .tab svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+  .tab.on{color:var(--red)}
+  .tab.on span{color:var(--ink); font-weight:800}
+
+  /* services grid */
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+  .tile{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px 8px 14px;
+    display:flex; flex-direction:column; align-items:center; gap:10px; font-size:.86rem; font-weight:700;
+    text-align:center; cursor:default; position:relative; color:var(--ink)}
+  .tile svg{width:30px; height:30px; stroke:var(--ink); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+  .tile .accent{stroke:var(--red)}
+  .tile.tap{cursor:pointer}
+  .tile .flag{position:absolute; top:-8px; right:-6px}
+
+  /* login */
+  .logo{font-size:2.1rem; font-weight:900; letter-spacing:.04em; color:var(--red); text-align:center;
+    text-shadow:0 0 14px rgba(245,51,63,.35)}
+  .slogan{text-align:center; font-weight:800; font-size:1.15rem; margin:6px 0 34px}
+  .field{background:#fff; border:1px solid var(--line); border-radius:99px; padding:15px 20px;
+    font-size:.95rem; color:var(--muted); margin-bottom:14px; display:flex; justify-content:space-between}
+
+  /* home */
+  .home-head{background:linear-gradient(180deg,#dbe7f7 0%, var(--bg) 90%); margin:-56px -18px 0; padding:64px 18px 8px}
+  .house-scene{margin:6px 0 14px}
+  .banner{
+    background:linear-gradient(115deg, #2a1518, #451b20 55%, #6d222b);
+    color:#fff; border-radius:22px; padding:18px; cursor:pointer; position:relative; overflow:hidden;
+  }
+  .banner:hover{filter:brightness(1.06)}
+  .banner .bolt{position:absolute; right:-12px; bottom:-18px; font-size:5.2rem; opacity:.16}
+  .banner h3{font-size:1.12rem; margin:6px 0 4px}
+  .banner p{font-size:.8rem; color:#f3c9cc; line-height:1.4}
+
+  .dev-card{display:flex; gap:14px; align-items:center; margin-top:12px}
+  .dev-ic{width:52px; height:64px; background:#fff; border:1px solid var(--line); border-radius:12px;
+    display:flex; align-items:center; justify-content:center; flex:none}
+
+  /* role cards */
+  .role-card{display:flex; gap:14px; align-items:center; cursor:pointer; margin-bottom:12px}
+  .role-card:hover{border-color:var(--red)}
+  .role-ic{width:54px; height:54px; border-radius:16px; background:#fdeaec; color:var(--red);
+    display:flex; align-items:center; justify-content:center; flex:none; font-size:1.5rem}
+  .role-card h3{font-size:1.02rem}
+  .role-card p{font-size:.78rem; color:var(--muted); line-height:1.4; margin-top:2px}
+  .role-card .arr{margin-left:auto; color:var(--faint); font-weight:800}
+
+  /* host */
+  .switch{position:relative; width:50px; height:30px; flex:none}
+  .switch input{opacity:0; width:100%; height:100%; position:absolute; cursor:pointer; z-index:2}
+  .switch i{position:absolute; inset:0; background:#d6d9df; border-radius:99px; transition:.2s}
+  .switch i::after{content:""; position:absolute; top:3px; left:3px; width:24px; height:24px;
+    background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .switch input:checked + i{background:var(--good)}
+  .switch input:checked + i::after{left:23px}
+  .stepper{display:flex; align-items:center; gap:14px}
+  .stepper button{font:inherit; width:36px; height:36px; border-radius:12px; border:1px solid var(--line);
+    background:#fff; font-size:1.2rem; font-weight:800; cursor:pointer; color:var(--ink)}
+  .stepper .val{font-size:1.3rem; font-weight:800; min-width:110px; text-align:center}
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px}
+  .stat h4{font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em}
+  .stat .n{font-size:1.45rem; font-weight:800; margin-top:4px}
+
+  /* chart */
+  .chart{margin-top:14px}
+  .chart .bars{display:flex; align-items:flex-end; gap:8px; height:110px; border-bottom:1px solid var(--line); padding:0 2px}
+  .chart .bcol{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; height:100%}
+  .chart .bar{width:100%; max-width:26px; background:#e9b6ba; border-radius:4px 4px 0 0}
+  .chart .bar.hot{background:var(--red)}
+  .chart .bval{font-size:.62rem; font-weight:800; color:var(--ink)}
+  .chart .days{display:flex; gap:8px; padding:6px 2px 0}
+  .chart .days span{flex:1; text-align:center; font-size:.68rem; color:var(--muted); font-weight:700}
+
+  .sess{display:flex; justify-content:space-between; padding:12px 2px; border-bottom:1px solid var(--line); font-size:.85rem}
+  .sess:last-child{border-bottom:none}
+  .sess b{display:block; font-size:.88rem}
+  .sess .muted{font-size:.74rem}
+  .sess .amt{font-weight:800; color:var(--good); align-self:center}
+
+  /* map */
+  .mapbox{border-radius:20px; overflow:hidden; border:1px solid var(--line); margin-bottom:14px}
+  .charger-item{display:flex; gap:12px; cursor:pointer; margin-bottom:10px}
+  .charger-item.off{opacity:.55; cursor:default}
+  .pin-ic{width:44px; height:44px; border-radius:14px; background:#fdeaec; display:flex; align-items:center;
+    justify-content:center; flex:none; font-size:1.2rem}
+  .charger-item h3{font-size:.95rem}
+  .charger-item .meta{font-size:.76rem; color:var(--muted); margin-top:2px}
+  .charger-item .right{margin-left:auto; text-align:right; display:flex; flex-direction:column; gap:6px; align-items:flex-end}
+  .price-tag{font-weight:800; font-size:.9rem}
+
+  /* scan */
+  .viewport{position:relative; margin:26px auto; width:250px; height:250px; border-radius:24px;
+    display:flex; align-items:center; justify-content:center; background:#161a23}
+  .viewport::before{content:""; position:absolute; inset:-4px; border-radius:28px;
+    background:
+      linear-gradient(var(--red),var(--red)) top left/44px 4px,
+      linear-gradient(var(--red),var(--red)) top left/4px 44px,
+      linear-gradient(var(--red),var(--red)) top right/44px 4px,
+      linear-gradient(var(--red),var(--red)) top right/4px 44px,
+      linear-gradient(var(--red),var(--red)) bottom left/44px 4px,
+      linear-gradient(var(--red),var(--red)) bottom left/4px 44px,
+      linear-gradient(var(--red),var(--red)) bottom right/44px 4px,
+      linear-gradient(var(--red),var(--red)) bottom right/4px 44px;
+    background-repeat:no-repeat}
+  .scanline{position:absolute; left:10px; right:10px; height:2px; background:var(--red); top:12px;
+    box-shadow:0 0 12px var(--red); animation:scan 2.4s ease-in-out infinite}
+  @keyframes scan{0%,100%{top:12px} 50%{top:236px}}
+  @media (prefers-reduced-motion: reduce){ .scanline{animation:none; top:124px} }
+
+  /* payment */
+  .payopt{display:flex; align-items:center; gap:12px; padding:14px 4px; border-bottom:1px solid var(--line); cursor:pointer}
+  .payopt:last-child{border-bottom:none}
+  .payopt .dot{width:20px; height:20px; border-radius:50%; border:2px solid var(--faint); flex:none}
+  .payopt.sel .dot{border:6px solid var(--red)}
+  .payopt b{font-size:.92rem}
+  .payopt .muted{font-size:.74rem}
+
+  /* charging ring */
+  .ringwrap{display:flex; justify-content:center; margin:18px 0 6px; position:relative}
+  .ringwrap .center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center}
+  .ringwrap .pct{font-size:2.3rem; font-weight:800; font-variant-numeric:tabular-nums}
+  .ringwrap .lbl{font-size:.72rem; color:#8d94a2; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
+  .ring-connecting{animation:pulse 1.2s ease-in-out infinite}
+  @media (prefers-reduced-motion: reduce){ .ring-connecting{animation:none} }
+  .cstats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px}
+  .cstat{background:#161a23; border:1px solid #262c39; border-radius:16px; padding:12px 14px}
+  .cstat h4{font-size:.66rem; color:#8d94a2; font-weight:700; text-transform:uppercase; letter-spacing:.06em}
+  .cstat .n{font-size:1.2rem; font-weight:800; margin-top:3px; font-variant-numeric:tabular-nums}
+
+  /* receipt */
+  .bigcheck{width:74px; height:74px; border-radius:50%; background:var(--good-bg); color:var(--good);
+    display:flex; align-items:center; justify-content:center; font-size:2.2rem; margin:10px auto 14px}
+  .rc-line{display:flex; justify-content:space-between; font-size:.88rem; padding:9px 0; border-bottom:1px dashed var(--line)}
+  .rc-line:last-child{border-bottom:none}
+  .rc-line b{font-variant-numeric:tabular-nums}
+  .stars{display:flex; justify-content:center; gap:8px; font-size:1.7rem; margin:14px 0}
+  .stars button{font:inherit; font-size:inherit; background:none; border:none; cursor:pointer; color:#d5d8de}
+  .stars button.on{color:#f2b01e}
+
+  /* wallbox sim */
+  .wallbox{width:210px; margin:14px auto; background:linear-gradient(160deg,#fdfdfe,#e8e9ee);
+    border:1px solid var(--line); border-radius:26px; padding:20px 18px 26px; box-shadow:0 16px 34px rgba(19,28,46,.16)}
+  .wallbox .brand{text-align:center; font-weight:900; letter-spacing:.06em; color:var(--red); font-size:.8rem}
+  .led{height:8px; border-radius:99px; margin:12px 0; background:#c9cdd6}
+  .led.idle{background:var(--good); box-shadow:0 0 10px var(--good)}
+  .led.busy{background:var(--blue); box-shadow:0 0 10px var(--blue); animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  @media (prefers-reduced-motion: reduce){ .led.busy{animation:none} }
+  .qrpanel{background:#fff; border:1px solid var(--line); border-radius:14px; padding:10px; display:flex; justify-content:center}
+  .wallbox .socket{width:56px; height:56px; border-radius:50%; background:#2a2f3b; margin:16px auto 0;
+    border:6px solid #3c4353}
+  .wb-status{text-align:center; font-weight:800; margin-top:14px; font-size:1rem}
+
+  .note{font-size:.72rem; color:var(--muted); text-align:center; line-height:1.5; margin-top:14px}
+
+  /* add charger / viability */
+  .label-caps{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em}
+  .field-input{border:none; outline:none; background:transparent; font:inherit; color:inherit; width:100%}
+  .field-input::placeholder{color:var(--muted)}
+  .srcopt{cursor:pointer; border:1.5px solid transparent}
+  .srcopt.sel{border-color:var(--red); background:#fdeaec}
+  .split-bar-track{display:flex; height:14px; border-radius:8px; overflow:hidden; background:var(--line)}
+  .split-fill{height:100%; transition:width .2s}
+  .split-fill.solar{background:var(--good)}
+  .split-fill.grid{background:var(--blue)}
+  .split-legend{display:flex; justify-content:space-between; margin-top:8px; font-size:.78rem; color:var(--muted)}
+  .split-legend b{color:var(--ink); font-variant-numeric:tabular-nums}
+  .dot-solar,.dot-grid{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px}
+  .dot-solar{background:var(--good)}
+  .dot-grid{background:var(--blue)}
+
+  @media (max-width: 860px){
+    body{gap:24px}
+    .side{max-width:392px; order:2}
+  }
+
+  /* ---------- demo stage (dual phone + scene) ---------- */
+  .hero{max-width:760px; margin:0 auto 28px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px}
+  .hero h1{font-size:1.7rem; line-height:1.25; text-wrap:balance}
+  .hero h1 em{color:var(--red); font-style:normal}
+  .hero p{font-size:.92rem; line-height:1.6; color:var(--cap-muted); max-width:620px}
+  .hero p strong{color:var(--cap-ink)}
+
+  .stage{display:flex; align-items:flex-start; justify-content:center; gap:28px; flex-wrap:wrap}
+  .phone-col{display:flex; flex-direction:column; align-items:center; gap:14px}
+  .phone-tag{
+    display:flex; align-items:center; gap:8px; font-weight:800; font-size:.95rem;
+    padding:8px 18px; border-radius:99px; background:var(--backdrop2); color:var(--cap-ink);
+    border:1.5px solid var(--line2, rgba(255,255,255,.08));
+  }
+  .phone-mount{position:relative}
+
+  /* the scene sits between the two phones: one row per charger the host owns */
+  .scene{
+    width:300px; height:800px; flex:none; position:relative; border-radius:36px; overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.06);
+    display:flex; flex-direction:column;
+    background:linear-gradient(180deg,#f4f3f0,#e2e0da);
+  }
+  .scene::before, .scene::after{content:""; position:absolute; top:0; bottom:0; width:18px; background:#1c2029; z-index:2}
+  .scene::before{left:0}
+  .scene::after{right:0}
+  .scene-roof{flex:none; height:56px; background:linear-gradient(180deg,#12151c,#242833); position:relative; z-index:1}
+  .scene-roof::after{content:""; position:absolute; left:0; right:0; bottom:0; height:8px; background:#0b0d12; opacity:.35}
+  .scene-roof-label{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:.72rem; font-weight:800; letter-spacing:.14em; color:#8d94a2; text-transform:uppercase;
+  }
+  .scene-bays{
+    flex:1; overflow-y:auto; padding:16px 26px 20px; display:flex; flex-direction:column; gap:12px;
+    scrollbar-width:thin;
+  }
+  .scene-empty{text-align:center; color:#8d94a2; font-size:.82rem; margin-top:24px; line-height:1.5}
+
+  .bay-row{
+    display:flex; align-items:center; gap:10px; flex:none;
+    background:rgba(255,255,255,.8); border:1px solid rgba(255,255,255,.9);
+    border-radius:16px; padding:10px 12px; box-shadow:0 2px 8px rgba(19,28,46,.06);
+    transition:box-shadow .2s;
+  }
+  .bay-row.bay-carregando{box-shadow:0 0 0 2px rgba(25,195,125,.45), 0 2px 8px rgba(19,28,46,.06)}
+  .bay-row.bay-em_uso{box-shadow:0 0 0 2px rgba(242,176,30,.45), 0 2px 8px rgba(19,28,46,.06)}
+  .bay-row.bay-interrompido{box-shadow:0 0 0 2px rgba(211,30,44,.45), 0 2px 8px rgba(19,28,46,.06)}
+  .bay-icon{position:relative; flex:none; width:34px; height:44px; display:flex; align-items:center; justify-content:center}
+  .bay-icon svg{width:26px; height:38px}
+  .bay-led{position:absolute; top:0; right:-3px; width:11px; height:11px; border-radius:50%; border:2px solid #fdfdfe; transition:background .3s}
+  .bay-led-disponivel{background:#3577f1; box-shadow:0 0 8px 2px rgba(53,119,241,.7)}
+  .bay-led-em_uso{background:#f2b01e; box-shadow:0 0 8px 2px rgba(242,176,30,.7); animation:pulse 1.4s ease-in-out infinite}
+  .bay-led-carregando{background:#19c37d; box-shadow:0 0 8px 2px rgba(25,195,125,.7); animation:pulse 1.1s ease-in-out infinite}
+  .bay-led-interrompido{background:#d31e2c; box-shadow:0 0 8px 2px rgba(211,30,44,.7); animation:pulse .9s ease-in-out infinite}
+  .bay-led-oculto{background:#9aa1ad; box-shadow:none}
+  @media (prefers-reduced-motion: reduce){ .bay-led-carregando, .bay-led-em_uso, .bay-led-interrompido{animation:none} }
+  .bay-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px}
+  .bay-info b{font-size:.76rem; font-weight:800; color:#131c2e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .bay-status{font-size:.68rem; font-weight:700}
+  .bay-status-disponivel{color:#2b6cb0}
+  .bay-status-em_uso{color:#9a6b00}
+  .bay-status-carregando{color:#0e9a63}
+  .bay-status-interrompido{color:#d31e2c}
+  .bay-status-oculto{color:#7c8494}
+  .bay-spot{flex:none; width:46px; height:36px}
+  .bay-spot svg{width:100%; height:100%; display:block}
+
+  @media (max-width: 1180px){
+    .stage{flex-direction:column; align-items:center}
+    .scene{order:-1; width:100%; max-width:392px; height:340px}
+  }
+  /* ---------- ajustes pra rodar num celular de verdade (sem moldura falsa) ---------- */
+  body{background:var(--bg)}
+  .phone-mount{display:block}
+  .phone{
+    width:100vw; height:100dvh; max-width:none; border:none; border-radius:0;
+    box-shadow:none; margin:0 auto;
+  }
+</style>
+
+<div class="phone-mount" id="m-mount"></div>
+
+<script>
+  function phoneHTML(p){
+    return `<div class="phone" id="${p}">
+  <div class="notch"></div>
+  <div class="statusbar"><span>15:02</span><span>5G ▮▮▮ 🔋42</span></div>
+
+  <!-- ============ LOGIN ============ -->
+  <section class="screen no-tab active" id="${p}-scr-login">
+    <div style="padding-top:60px">
+      <div class="logo">GOODWE</div>
+      <div class="slogan">We, the Smart Energy Innovator</div>
+      <div class="field"><span>pa**********@gmail.com</span></div>
+      <div class="field"><span>••••••••••</span><span>👁</span></div>
+      <div class="spread" style="font-size:.82rem; margin:2px 6px 0">
+        <span style="font-weight:700">☑ Lembrar senha</span>
+        <span class="muted">Esqueci a senha</span>
+      </div>
+      <div style="margin-top:150px">
+        <button class="btn" data-go="${p}-scr-home">Login</button>
+        <p style="text-align:center; font-weight:700; margin-top:16px; font-size:.92rem">Criar conta</p>
+        <p class="note">Protótipo de faculdade — nenhum dado é real.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOME ============ -->
+  <section class="screen" id="${p}-scr-home">
+    <div class="home-head">
+      <div class="spread">
+        <span class="h-title">Pais’s Home</span>
+        <span class="muted" style="font-size:1.1rem">💬 ⋯</span>
+      </div>
+      <div style="margin-top:8px"><span class="chip blue">💬 Em construção</span></div>
+      <div style="margin-top:10px; font-weight:800">⛅ 23 °C</div>
+      <div class="house-scene">
+        <svg viewBox="0 0 340 150" role="img" aria-label="Casa com painéis solares e wallbox carregando um carro elétrico">
+          <rect x="0" y="128" width="340" height="3" rx="1.5" fill="#d8dbe2"/>
+          <polygon points="60,70 150,28 240,70" fill="#eceef2" stroke="#d0d4dc"/>
+          <rect x="72" y="70" width="156" height="58" fill="#fff" stroke="#d0d4dc"/>
+          <rect x="84" y="58" width="40" height="20" transform="rotate(-25 84 58)" fill="#2b57a8" rx="2"/>
+          <rect x="128" y="38" width="40" height="20" transform="rotate(-25 128 38)" fill="#2b57a8" rx="2"/>
+          <rect x="96" y="88" width="26" height="40" fill="#f2c94c" opacity=".55" rx="2"/>
+          <rect x="168" y="82" width="40" height="30" fill="#cfe0f5" rx="2"/>
+          <rect x="248" y="84" width="14" height="26" rx="4" fill="#fdfdfe" stroke="#c9cdd6"/>
+          <rect x="252" y="89" width="6" height="5" rx="1" fill="#f5333f"/>
+          <path d="M262 96 Q 276 100 282 112" stroke="#3c4353" fill="none" stroke-width="2.5"/>
+          <rect x="272" y="108" width="52" height="20" rx="9" fill="#e8f0fb" stroke="#b9cbe6"/>
+          <circle cx="284" cy="128" r="6" fill="#3c4353"/><circle cx="314" cy="128" r="6" fill="#3c4353"/>
+          <text x="290" y="103" font-size="11" font-weight="800" fill="#149d68">⚡</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="banner" data-go="${p}-scr-role" role="button" tabindex="0">
+      <span class="chip new">Novo</span>
+      <h3>Recarga Compartilhada</h3>
+      <p>Seu carregador pode gerar renda — ou te salvar na rua. Toque para conhecer.</p>
+      <span class="bolt">⚡</span>
+    </div>
+
+    <div class="card dev-card">
+      <div class="dev-ic">
+        <svg width="26" height="38" viewBox="0 0 26 38"><rect x="1" y="1" width="24" height="36" rx="7" fill="none" stroke="#131c2e" stroke-width="2"/><rect x="8" y="8" width="10" height="8" rx="2" fill="#f5333f"/><circle cx="13" cy="26" r="4" fill="none" stroke="#131c2e" stroke-width="2"/></svg>
+      </div>
+      <div>
+        <b>Wallbox GoodWe HCA 7 kW</b>
+        <div class="muted">Garagem · Tipo 2 · AC</div>
+        <div style="margin-top:6px"><span class="chip good home-dev-chip">● Online</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DISPOSITIVOS ============ -->
+  <section class="screen" id="${p}-scr-devices">
+    <div class="h-title" style="margin-bottom:16px">Lista de dispositivos</div>
+    <div class="my-devices-list"></div>
+    <div class="card" data-go="${p}-scr-add-charger" role="button" tabindex="0" style="margin-top:12px; text-align:center; border-style:dashed; color:var(--muted); cursor:pointer">
+      <div style="font-size:1.4rem; font-weight:800">＋</div>
+      <div class="muted">Adicionar dispositivo</div>
+    </div>
+  </section>
+
+  <!-- ============ SERVIÇOS ============ -->
+  <section class="screen" id="${p}-scr-services">
+    <div class="subhead" style="margin-top:0">Serviços</div>
+    <div class="grid3">
+      <div class="tile"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path class="accent" d="M8 8h8M8 12h8M8 16h5"/></svg>Notícias GoodWe</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2"/><path class="accent" d="M9 11h6M9 15h6"/></svg>Comunicados</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0"/><rect x="3" y="13" width="4" height="6" rx="2"/><rect x="17" y="13" width="4" height="6" rx="2"/><path class="accent" d="M12 21h4"/></svg>Suporte Técnico</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><path class="accent" d="M4 14l4-8 4 10 4-8 4 6"/></svg>Fale conosco</div>
+    </div>
+
+    <div class="subhead">Ferramentas</div>
+    <div class="grid3">
+      <div class="tile"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path class="accent" d="M9 12l2 2 4-4"/></svg>Garantia</div>
+      <div class="tile tap" data-go="${p}-scr-role" role="button" tabindex="0">
+        <span class="flag chip new">Novo</span>
+        <svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="3"/><path class="accent" d="M12 8l-2 4h4l-2 4"/></svg>
+        Recarga Compartilhada
+      </div>
+    </div>
+
+    <div class="subhead">Configuração</div>
+    <div class="grid3">
+      <div class="tile"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/><path class="accent" d="M15 6h4v4"/></svg>Criar usina</div>
+      <div class="tile"><svg viewBox="0 0 24 24"><path class="accent" d="M10 14a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1.5 1.5"/><path d="M14 10a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1.5-1.5"/></svg>Acesso local</div>
+    </div>
+  </section>
+
+  <!-- ============ CONTA ============ -->
+  <section class="screen" id="${p}-scr-account">
+    <div style="width:88px; height:88px; border-radius:50%; background:#fdeaec; color:var(--red);
+      display:flex; align-items:center; justify-content:center; font-size:1.9rem; font-weight:900; margin:14px 0 12px">PP</div>
+    <div class="row"><span class="h-title">Patrick Pais</span>
+      <span class="chip" style="background:linear-gradient(90deg,#8c1220,#c21a2c); color:#fff">Proprietário</span></div>
+    <p class="muted" style="margin:8px 0 20px">pa**********@gmail.com &nbsp;›</p>
+    <div class="card" style="padding:4px 16px">
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Detalhes do APP</b><span><span class="chip new">Novo</span> ›</span></div>
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Carteira · Recarga Compartilhada</b><span class="muted money wallet-line">R$ 612,40 ›</span></div>
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Configuração</b><span class="muted">›</span></div>
+      <div class="spread" style="padding:15px 0; border-bottom:1px solid var(--line)"><b>Notificações</b><span class="muted">›</span></div>
+      <div class="spread" style="padding:15px 0"><b>Segurança da Conta</b><span class="muted">›</span></div>
+    </div>
+  </section>
+
+  <!-- ============ ESCOLHA DE PERFIL ============ -->
+  <section class="screen no-tab" id="${p}-scr-role">
+    <div class="backbar"><button data-go="${p}-scr-home" aria-label="Voltar">‹</button><span class="h-title">Recarga Compartilhada</span></div>
+    <div class="banner" style="cursor:default; margin-bottom:16px">
+      <h3 style="margin-top:0">Toda wallbox é um posto ⚡</h3>
+      <p>Conectamos donos de carregadores GoodWe a motoristas próximos. Sem hardware novo, sem mensalidade.</p>
+      <span class="bolt">⚡</span>
+    </div>
+    <div class="card role-card" data-go="${p}-scr-host" role="button" tabindex="0">
+      <div class="role-ic">🏠</div>
+      <div><h3>Sou Anfitrião</h3><p>Tenho um carregador GoodWe e quero ganhar dinheiro nas horas em que ele fica parado.</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card" data-go="${p}-scr-map" role="button" tabindex="0">
+      <div class="role-ic">🚗</div>
+      <div><h3>Sou Motorista</h3><p>Quero encontrar um ponto de recarga perto de mim, pagar pelo app e carregar agora.</p></div>
+      <span class="arr">›</span>
+    </div>
+    <p class="note">A GoodWe recebe 10% por transação. O anfitrião define o preço e os horários.</p>
+  </section>
+
+  <!-- ============ ANFITRIÃO ============ -->
+  <section class="screen no-tab" id="${p}-scr-host">
+    <div class="backbar"><button data-go="${p}-scr-role" aria-label="Voltar">‹</button><span class="h-title">Meu Ponto de Recarga</span></div>
+
+    <div class="card" data-go="${p}-scr-add-charger" role="button" tabindex="0" style="margin-bottom:16px; text-align:center; border-style:dashed; color:var(--muted); cursor:pointer">
+      <div style="font-size:1.4rem; font-weight:800">＋</div>
+      <div class="muted">Cadastrar novo carregador</div>
+    </div>
+
+    <div class="subhead" style="margin-top:0">Meus carregadores</div>
+    <div class="my-chargers-list"></div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Interruptor geral</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Desliga tudo de uma vez — ou toque na etiqueta "Pública/Privada" de cada carregador na lista acima</div>
+        </div>
+        <label class="switch" aria-label="Interruptor geral de visibilidade">
+          <input type="checkbox" id="${p}-pub-toggle" class="pub-toggle" checked>
+          <i></i>
+        </label>
+      </div>
+      <div style="margin-top:10px"><span class="chip good host-pub-chip">● Visível ao público</span></div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="spread">
+        <div>
+          <h4 style="font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em">Preço por kWh</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Sugestão da região: R$ 1,80 – R$ 2,20</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepPrice" data-dir="-1" aria-label="Diminuir preço">−</button>
+          <span class="val money price-val">R$ 1,89</span>
+          <button data-action="stepPrice" data-dir="1" aria-label="Aumentar preço">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><h4>Ganhos hoje</h4><div class="n money earn-today">R$ 34,78</div></div>
+      <div class="card stat"><h4>Este mês</h4><div class="n money earn-month">R$ 612,40</div></div>
+    </div>
+
+    <div class="card chart">
+      <b style="font-size:.95rem">Ganhos da semana</b>
+      <div class="bars week-bars" role="img" aria-label="Gráfico de barras dos ganhos diários da semana"></div>
+      <div class="days"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <b style="font-size:.95rem">Últimas recargas</b>
+      <div class="sess-list">
+        <div class="sess"><div><b>Renault Kwid E-Tech</b><span class="muted">Hoje · 09:12 · 18,4 kWh</span></div><span class="amt money">+ R$ 31,30</span></div>
+        <div class="sess"><div><b>BYD Dolphin</b><span class="muted">Ontem · 19:40 · 32,1 kWh</span></div><span class="amt money">+ R$ 54,60</span></div>
+        <div class="sess"><div><b>Fiat 500e</b><span class="muted">Ter · 14:05 · 21,7 kWh</span></div><span class="amt money">+ R$ 36,91</span></div>
+      </div>
+    </div>
+
+    <button class="btn ghost" style="margin-top:14px" data-action="openBox" data-from="${p}-scr-host">Ver meu carregador (demonstração)</button>
+    <p class="note">Repasse automático via Pix toda segunda-feira · Taxa GoodWe: 10%</p>
+  </section>
+
+  <!-- ============ CADASTRAR CARREGADOR ============ -->
+  <section class="screen no-tab" id="${p}-scr-add-charger">
+    <div class="backbar"><button data-go="${p}-scr-host" aria-label="Voltar">‹</button><span class="h-title">Cadastrar carregador</span></div>
+    <div class="card">
+      <h4 class="label-caps" style="margin-bottom:8px">CEP da instalação</h4>
+      <div class="row">
+        <div class="field" style="flex:1; margin-bottom:0"><input id="${p}-cep-input" class="field-input" type="text" inputmode="numeric" placeholder="00000-000" maxlength="9" aria-label="CEP"></div>
+        <button class="btn" style="width:auto; margin:0; padding:0 22px" data-action="lookupCep">Buscar</button>
+      </div>
+      <p class="muted" id="${p}-cep-status" style="font-size:.74rem; margin-top:8px">Digite o CEP para buscar o endereço automaticamente.</p>
+
+      <div id="${p}-cep-result" style="display:none">
+        <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+        <h4 class="label-caps" style="margin-bottom:8px">Rua</h4>
+        <div class="field"><input id="${p}-addr-street" class="field-input" type="text" placeholder="Rua / Avenida"></div>
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1">
+            <h4 class="label-caps" style="margin-bottom:8px">Bairro</h4>
+            <div class="field"><input id="${p}-addr-district" class="field-input" type="text" placeholder="Bairro"></div>
+          </div>
+          <div style="flex:1">
+            <h4 class="label-caps" style="margin-bottom:8px">Cidade/UF</h4>
+            <div class="field"><input id="${p}-addr-city" class="field-input" type="text" placeholder="Cidade/UF"></div>
+          </div>
+        </div>
+        <h4 class="label-caps" style="margin:10px 0 8px">Número do imóvel</h4>
+        <div class="field"><input id="${p}-addr-number" class="field-input" type="text" inputmode="numeric" placeholder="Ex: 128" aria-label="Número do imóvel"></div>
+        <p class="muted" style="font-size:.72rem; margin-top:6px">Confira o endereço encontrado e complete o número.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Quantas máquinas</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Nesse mesmo endereço</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepQty" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val qty-val">1</span>
+          <button data-action="stepQty" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn" style="margin-top:16px" data-action="goScanDevice">Ler QR Code da máquina</button>
+    <p class="note">O QR Code fica no corpo da wallbox e identifica o modelo automaticamente.</p>
+  </section>
+
+  <!-- ============ SCAN NOVO CARREGADOR ============ -->
+  <section class="screen no-tab dark-scr" id="${p}-scr-scan-device">
+    <div class="backbar"><button data-go="${p}-scr-add-charger" aria-label="Voltar" style="background:#161a23; border-color:#262c39; color:#f2f3f6">‹</button><span class="h-title">Ler QR Code</span></div>
+    <p class="muted" style="color:#8d94a2; text-align:center">Aponte a câmera para o QR Code<br>impresso no corpo da wallbox</p>
+    <div class="viewport">
+      <svg class="qr-newdevice" width="190" height="190" role="img" aria-label="QR Code da nova wallbox"></svg>
+      <div class="scanline"></div>
+    </div>
+    <button class="btn" data-action="registerDevice">Simular leitura do QR Code</button>
+    <p class="note" style="color:#5d6572">Modelo e potência são detectados automaticamente.</p>
+    <button class="btn ghost" style="margin-top:14px" data-go="${p}-scr-manual-device">Não consigo ler o QR Code</button>
+  </section>
+
+  <!-- ============ ADICIONAR MANUALMENTE ============ -->
+  <section class="screen no-tab" id="${p}-scr-manual-device">
+    <div class="backbar"><button data-go="${p}-scr-scan-device" aria-label="Voltar">‹</button><span class="h-title">Adicionar manualmente</span></div>
+    <p class="muted" style="text-align:center">Escolha o modelo do seu carregador GoodWe ou informe as especificações de outro equipamento.</p>
+
+    <div class="subhead" style="margin-top:18px">Linha GoodWe HCA</div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="GW7K-HCA-20" role="button" tabindex="0">
+      <div class="role-ic">⚡</div>
+      <div><h3>GW7K-HCA-20</h3><p>7 kW · Monofásico · 230V, 32A</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="GW11K-HCA-20" role="button" tabindex="0">
+      <div class="role-ic">⚡</div>
+      <div><h3>GW11K-HCA-20</h3><p>11 kW · Trifásico · 400V, 16A</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="GW22K-HCA-20" role="button" tabindex="0">
+      <div class="role-ic">⚡</div>
+      <div><h3>GW22K-HCA-20</h3><p>22 kW · Trifásico · 400V, 32A</p></div>
+      <span class="arr">›</span>
+    </div>
+    <div class="card role-card manual-model" data-action="selManualModel" data-model="other" role="button" tabindex="0">
+      <div class="role-ic">✏️</div>
+      <div><h3>Outro modelo</h3><p>Não está na lista? Digite as especificações.</p></div>
+      <span class="arr">›</span>
+    </div>
+
+    <div id="${p}-manual-custom-fields" style="display:none; margin-top:4px">
+      <div class="card">
+        <h4 class="label-caps" style="margin-bottom:8px">Modelo / nome do equipamento</h4>
+        <div class="field"><input id="${p}-manual-name" class="field-input" type="text" placeholder="Ex: Carregador XPTO"></div>
+        <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+        <div class="spread">
+          <div><h4 class="label-caps">Potência</h4></div>
+          <div class="stepper">
+            <button data-action="stepManualKw" data-dir="-1" aria-label="Diminuir">−</button>
+            <span class="val manual-kw-val">7 kW</span>
+            <button data-action="stepManualKw" data-dir="1" aria-label="Aumentar">＋</button>
+          </div>
+        </div>
+        <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+        <h4 class="label-caps" style="margin-bottom:8px">Tipo de conector</h4>
+        <div class="field"><input id="${p}-manual-connector" class="field-input" type="text" value="Tipo 2 · AC"></div>
+      </div>
+      <button class="btn" style="margin-top:16px" data-action="confirmManualDevice">Confirmar equipamento</button>
+    </div>
+  </section>
+
+  <!-- ============ RESULTADO DO CADASTRO ============ -->
+  <section class="screen no-tab" id="${p}-scr-device-result">
+    <div class="backbar"><button data-go="${p}-scr-add-charger" aria-label="Voltar">‹</button><span class="h-title">Carregador identificado</span></div>
+    <div class="card dev-card">
+      <div class="dev-ic">
+        <svg width="26" height="38" viewBox="0 0 26 38"><rect x="1" y="1" width="24" height="36" rx="7" fill="none" stroke="#131c2e" stroke-width="2"/><rect x="8" y="8" width="10" height="8" rx="2" fill="#f5333f"/><circle cx="13" cy="26" r="4" fill="none" stroke="#131c2e" stroke-width="2"/></svg>
+      </div>
+      <div>
+        <b class="res-model">GoodWe HCA</b>
+        <div class="muted res-serial">N/S —</div>
+        <div class="muted res-meta" style="font-size:.76rem; margin-top:1px">—</div>
+        <div style="margin-top:6px"><span class="chip good">● Detectado</span></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="rc-line"><span class="muted">Endereço</span><b class="res-address">—</b></div>
+    </div>
+    <div class="stats">
+      <div class="card stat"><h4>Potência</h4><div class="n res-power">— kW</div></div>
+      <div class="card stat"><h4>Quantidade</h4><div class="n res-qty">1 unidade</div></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Uso médio estimado</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Horas de recarga por dia</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepHours" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val hours-val">3 h</span>
+          <button data-action="stepHours" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="rc-line"><span class="muted">Consumo estimado / unidade</span><b class="res-consumo-unit">— kWh/dia</b></div>
+      <div class="rc-line"><span class="muted">Consumo estimado total</span><b class="res-consumo-total">— kWh/dia</b></div>
+    </div>
+    <button class="btn" style="margin-top:16px" data-action="goViability">Continuar para Análise de Viabilidade</button>
+    <button class="btn ghost" style="margin-top:10px" data-go="${p}-scr-host">Cadastrar depois</button>
+  </section>
+
+  <!-- ============ ANÁLISE DE VIABILIDADE ============ -->
+  <section class="screen no-tab" id="${p}-scr-viability">
+    <div class="backbar"><button data-go="${p}-scr-host" aria-label="Voltar">‹</button><span class="h-title">Análise de Viabilidade</span></div>
+
+    <div class="card">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Vagas de recarga</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">Carregadores disponíveis nesse endereço</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepVagas" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val vagas-val">1</span>
+          <button data-action="stepVagas" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="subhead">Fonte de energia solar</div>
+    <div class="grid3">
+      <div class="tile tap srcopt sel" data-action="toggleSource" data-src="roof" role="button" tabindex="0" aria-pressed="true"><span style="font-size:1.6rem">🏠</span>Telhado</div>
+      <div class="tile tap srcopt" data-action="toggleSource" data-src="facade" role="button" tabindex="0" aria-pressed="false"><span style="font-size:1.6rem">🧱</span>Fachada</div>
+      <div class="tile tap srcopt" data-action="toggleSource" data-src="carport" role="button" tabindex="0" aria-pressed="false"><span style="font-size:1.6rem">🚗</span>Cobertura</div>
+    </div>
+    <p class="muted" style="text-align:center; font-size:.74rem; margin-top:8px">Toque para combinar mais de uma fonte — cada uma tem sua própria quantidade de placas.</p>
+
+    <div class="source-panels-container"></div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="rc-line"><span class="muted">Geração solar total</span><b class="gen-total">— kWh/dia</b></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div>
+          <h4 class="label-caps">Energia solar para recarga</h4>
+          <div class="muted" style="font-size:.72rem; margin-top:2px">O resto abastece a casa</div>
+        </div>
+        <div class="stepper">
+          <button data-action="stepAlloc" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val alloc-val">60%</span>
+          <button data-action="stepAlloc" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="split-bar-track">
+          <div class="split-fill solar split-solar"></div>
+          <div class="split-fill grid split-grid"></div>
+        </div>
+        <div class="split-legend">
+          <span><i class="dot-solar"></i>Solar <b class="leg-solar">—</b></span>
+          <span><i class="dot-grid"></i>Rede <b class="leg-grid">—</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="spread">
+        <div><h4 class="label-caps">Tarifa da rede</h4></div>
+        <div class="stepper">
+          <button data-action="stepTariff" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val money tariff-val">R$ 0,78</span>
+          <button data-action="stepTariff" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="rc-line"><span class="muted">Custo diário com rede</span><b class="money cost-grid-day">—</b></div>
+      <div class="rc-line"><span class="muted">Custo médio por kWh entregue</span><b class="money cost-avg-kwh">—</b></div>
+    </div>
+
+    <div class="card" style="margin-top:12px; background:#fdeaec; border-color:#f6ccd0">
+      <div class="spread">
+        <div><b style="font-size:.95rem">Preço sugerido</b><div class="muted" style="font-size:.74rem; margin-top:2px">Custo + margem, nunca abaixo do ponto de equilíbrio</div></div>
+        <div class="stepper">
+          <button data-action="stepMargin" data-dir="-1" aria-label="Diminuir">−</button>
+          <span class="val margin-val">140%</span>
+          <button data-action="stepMargin" data-dir="1" aria-label="Aumentar">＋</button>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:10px">
+        <div class="row" style="justify-content:center; gap:4px">
+          <span style="font-size:1.5rem; font-weight:800; color:var(--red)">R$</span>
+          <input class="suggested-price-input" type="text" inputmode="decimal" value="—"
+            style="font:inherit; font-size:2rem; font-weight:800; color:var(--red); border:none; background:transparent; width:120px; text-align:center"
+            aria-label="Preço sugerido por kWh — edite para ajustar manualmente">
+        </div>
+        <div class="muted" style="font-size:.74rem">por kWh · toque para editar</div>
+      </div>
+      <hr style="border:none; border-top:1px solid #f6ccd0; margin:14px 0">
+      <div class="rc-line"><span class="muted">Ponto de equilíbrio (custo ÷ 90%)</span><b class="money floor-price">—</b></div>
+    </div>
+
+    <div class="stats">
+      <div class="card stat"><h4>Lucro / carregador / dia</h4><div class="n money profit-unit">—</div></div>
+      <div class="card stat"><h4>Lucro geral / mês</h4><div class="n money profit-total">—</div></div>
+    </div>
+
+    <button class="btn" style="margin-top:16px" data-action="applySuggestedPrice">Aplicar preço sugerido</button>
+    <p class="note">Estimativas ilustrativas para fins acadêmicos — não consideram sazonalidade, degradação dos painéis ou bandeira tarifária.</p>
+  </section>
+
+  <!-- ============ MAPA / BUSCA ============ -->
+  <section class="screen no-tab" id="${p}-scr-map">
+    <div class="backbar"><button data-go="${p}-scr-role" aria-label="Voltar">‹</button><span class="h-title">Encontrar recarga</span></div>
+
+    <div class="mapbox">
+      <svg viewBox="0 0 340 170" role="img" aria-label="Mapa com três carregadores próximos">
+        <rect width="340" height="170" fill="#e9edf3"/>
+        <path d="M0 60 H340 M0 120 H340 M80 0 V170 M190 0 V170 M280 0 V170" stroke="#fff" stroke-width="10"/>
+        <path d="M0 60 H340 M0 120 H340 M80 0 V170 M190 0 V170 M280 0 V170" stroke="#d8dde6" stroke-width="1"/>
+        <rect x="16" y="14" width="48" height="32" rx="4" fill="#dfe6ef"/>
+        <rect x="210" y="132" width="54" height="26" rx="4" fill="#d9e8dc"/>
+        <circle cx="170" cy="92" r="7" fill="#3577f1" stroke="#fff" stroke-width="2.5"/>
+        <g font-size="13" text-anchor="middle">
+          <g transform="translate(120,52)"><path d="M0 8 C-9 -4 9 -4 0 8" fill="#f5333f" stroke="#fff"/><circle cy="-2" r="7" fill="#f5333f"/><text y="2" fill="#fff" font-size="9" font-weight="800">⚡</text></g>
+          <g transform="translate(236,88)"><path d="M0 8 C-9 -4 9 -4 0 8" fill="#b0b6c2" stroke="#fff"/><circle cy="-2" r="7" fill="#b0b6c2"/><text y="2" fill="#fff" font-size="9" font-weight="800">⚡</text></g>
+          <g transform="translate(60,132)"><path d="M0 8 C-9 -4 9 -4 0 8" fill="#f5333f" stroke="#fff"/><circle cy="-2" r="7" fill="#f5333f"/><text y="2" fill="#fff" font-size="9" font-weight="800">⚡</text></g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="map-charger-list"></div>
+    <div class="card charger-item off">
+      <div class="pin-ic">🏢</div>
+      <div><h3>Condomínio Solar Ville</h3><div class="meta">2,8 km · 11 kW AC · Tipo 2 · ⭐ 4,7</div></div>
+      <div class="right"><span class="price-tag money">R$ 2,10/kWh</span><span class="chip warn">Ocupado</span></div>
+    </div>
+    <div class="card charger-item off">
+      <div class="pin-ic">🥖</div>
+      <div><h3>Padaria Pão &amp; Sol</h3><div class="meta">3,5 km · 7,4 kW AC · Tipo 2 · ⭐ 4,8</div></div>
+      <div class="right"><span class="price-tag money">R$ 1,75/kWh</span><span class="chip warn">Fecha às 15h</span></div>
+    </div>
+  </section>
+
+  <!-- ============ DETALHE DO CARREGADOR ============ -->
+  <section class="screen no-tab" id="${p}-scr-detail">
+    <div class="backbar"><button data-go="${p}-scr-map" aria-label="Voltar">‹</button><span class="h-title charger-name">Garagem do Patrick</span></div>
+    <div class="card">
+      <div class="spread">
+        <div class="row"><div class="pin-ic">🏠</div>
+          <div><b>Patrick P.</b><div class="muted">Anfitrião · ⭐ 4,9 (37 recargas)</div></div></div>
+        <span class="chip good charger-detail-status">Disponível</span>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="rc-line"><span class="muted">Endereço</span><b class="charger-address">Rua das Acácias, 128</b></div>
+      <div class="rc-line"><span class="muted">Conector</span><b class="charger-connector">Tipo 2 · 7,4 kW AC</b></div>
+      <div class="rc-line"><span class="muted">Preço</span><b class="money detail-price">R$ 1,89 / kWh</b></div>
+      <div class="rc-line"><span class="muted">Janela de hoje</span><b>08h – 18h</b></div>
+    </div>
+    <div class="card" style="margin-top:12px; background:#fdeaec; border-color:#f6ccd0">
+      <b style="font-size:.9rem">Estimativa</b>
+      <p class="muted" style="margin-top:4px">Carregar 30 kWh (≈ 200 km) custa cerca de <b class="money detail-est">R$ 56,70</b> e leva ~4 h.</p>
+    </div>
+    <button class="btn" style="margin-top:16px" data-go="${p}-scr-scan">Cheguei — ler QR Code</button>
+    <p class="note">O QR Code fica no corpo do carregador. A vaga é liberada pelo anfitrião.</p>
+  </section>
+
+  <!-- ============ SCANNER ============ -->
+  <section class="screen no-tab dark-scr" id="${p}-scr-scan">
+    <div class="backbar"><button data-go="${p}-scr-detail" aria-label="Voltar" style="background:#161a23; border-color:#262c39; color:#f2f3f6">‹</button><span class="h-title">Ler QR Code</span></div>
+    <p class="muted" style="color:#8d94a2; text-align:center">Aponte a câmera para o QR Code<br>no corpo da wallbox</p>
+    <div class="viewport">
+      <svg class="qr-scan" width="190" height="190" role="img" aria-label="QR Code do carregador"></svg>
+      <div class="scanline"></div>
+    </div>
+    <button class="btn" data-go="${p}-scr-pay">Simular leitura do QR Code</button>
+    <p class="note" style="color:#5d6572">GW-HCA · ID BR-0128 · <span class="charger-name">Garagem do Patrick</span></p>
+  </section>
+
+  <!-- ============ PAGAMENTO ============ -->
+  <section class="screen no-tab" id="${p}-scr-pay">
+    <div class="backbar"><button data-go="${p}-scr-scan" aria-label="Voltar">‹</button><span class="h-title">Confirmar recarga</span></div>
+    <div class="card">
+      <div class="row"><div class="pin-ic">🏠</div>
+        <div><b class="charger-name">Garagem do Patrick</b><div class="muted money pay-price">Tipo 2 · 7,4 kW · R$ 1,89/kWh</div></div></div>
+    </div>
+    <div class="card" style="margin-top:12px; padding:4px 16px">
+      <div class="payopt sel" data-action="selPay"><span class="dot"></span><div><b>Pix</b><div class="muted">Aprovação instantânea</div></div></div>
+      <div class="payopt" data-action="selPay"><span class="dot"></span><div><b>Carteira GoodWe</b><div class="muted money">Saldo: R$ 128,50</div></div></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h4 class="label-caps" style="margin-bottom:2px">Até quanto carregar?</h4>
+      <div class="muted" style="font-size:.72rem; margin-bottom:10px">Bateria atual: <span class="target-start-pct">32</span>% — escolha por porcentagem ou digite um valor</div>
+      <div class="spread">
+        <div><h4 class="label-caps">Meta de carga</h4></div>
+        <div class="stepper">
+          <button data-action="stepTargetPct" data-dir="-1" aria-label="Diminuir meta">−</button>
+          <span class="val target-pct-val">80%</span>
+          <button data-action="stepTargetPct" data-dir="1" aria-label="Aumentar meta">＋</button>
+        </div>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <h4 class="label-caps" style="margin-bottom:8px">Ou digite quanto quer abastecer</h4>
+      <div class="field"><span>R$</span><input class="field-input target-money-input" type="text" inputmode="decimal" placeholder="0,00" style="text-align:right" aria-label="Valor a abastecer em reais"></div>
+      <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+      <div class="rc-line"><span class="muted">Energia estimada</span><b class="target-kwh">— kWh</b></div>
+      <div class="rc-line" style="font-size:1rem"><span><b>Custo estimado</b></span><b class="money target-cost" style="color:var(--red)">—</b></div>
+    </div>
+
+    <div class="card" style="margin-top:12px; background:var(--blue-bg); border-color:#c7d9f7">
+      <p style="font-size:.8rem; line-height:1.5; color:#1d4ea8"><b>Pré-autorização de R$ 80,00.</b> Você paga apenas o que consumir — o restante é estornado ao encerrar.</p>
+    </div>
+    <button class="btn" style="margin-top:16px" data-action="startCharge">Confirmar e iniciar recarga</button>
+    <p class="note">Pagamento simulado — protótipo sem transação real.</p>
+  </section>
+
+  <!-- ============ CARREGANDO ============ -->
+  <section class="screen no-tab dark-scr" id="${p}-scr-charging">
+    <div style="text-align:center; margin-top:6px">
+      <span class="chip chg-status">🔌 Conectando ao veículo…</span>
+      <div class="chg-plug-actions" style="margin-top:10px"></div>
+    </div>
+    <div class="ringwrap">
+      <svg width="210" height="210" viewBox="0 0 210 210">
+        <circle cx="105" cy="105" r="92" fill="none" stroke="#232936" stroke-width="14"/>
+        <circle class="ring" cx="105" cy="105" r="92" fill="none" stroke="#f5333f" stroke-width="14"
+          stroke-linecap="round" stroke-dasharray="578" stroke-dashoffset="578"
+          transform="rotate(-90 105 105)"/>
+      </svg>
+      <div class="center"><span class="pct chg-pct">—</span><span class="lbl chg-phase-label">Conectando…</span></div>
+    </div>
+    <div class="cstats">
+      <div class="cstat"><h4>Energia</h4><div class="n money chg-kwh">0,0 kWh</div></div>
+      <div class="cstat"><h4>Custo parcial</h4><div class="n money chg-cost">R$ 0,00</div></div>
+      <div class="cstat"><h4>Potência</h4><div class="n chg-power">7,4 kW</div></div>
+      <div class="cstat"><h4>Tempo</h4><div class="n money chg-time">0 min</div></div>
+    </div>
+    <button class="btn ghost" style="margin-top:14px" data-action="openBox" data-from="${p}-scr-charging">Ver o carregador</button>
+    <button class="btn" style="margin-top:10px" data-action="finishCharge">Encerrar recarga</button>
+    <p class="note" style="color:#5d6572">Simulação acelerada ~60× para a demonstração.</p>
+  </section>
+
+  <!-- ============ RECIBO ============ -->
+  <section class="screen no-tab" id="${p}-scr-receipt">
+    <div class="bigcheck">✓</div>
+    <h2 style="text-align:center; font-size:1.3rem">Recarga concluída!</h2>
+    <p class="muted" style="text-align:center; margin-top:4px"><span class="charger-name">Garagem do Patrick</span> · hoje</p>
+    <div class="card" style="margin-top:16px">
+      <div class="rc-line"><span class="muted">Energia entregue</span><b class="rc-kwh">— kWh</b></div>
+      <div class="rc-line"><span class="muted">Duração</span><b class="rc-time">—</b></div>
+      <div class="rc-line"><span class="muted">Tarifa</span><b class="money rc-rate">—</b></div>
+      <div class="rc-line" style="font-size:1rem"><span><b>Total pago</b></span><b class="money rc-total" style="color:var(--red)">—</b></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="rc-line"><span class="muted">Anfitrião recebe (90%)</span><b class="money rc-host" style="color:var(--good)">—</b></div>
+      <div class="rc-line"><span class="muted">Taxa GoodWe (10%)</span><b class="money rc-fee">—</b></div>
+    </div>
+    <div class="stars stars" aria-label="Avaliar anfitrião">
+      <button data-action="rate" data-n="1">★</button><button data-action="rate" data-n="2">★</button><button data-action="rate" data-n="3">★</button><button data-action="rate" data-n="4">★</button><button data-action="rate" data-n="5">★</button>
+    </div>
+    <button class="btn" data-action="concludeReceipt">Concluir</button>
+  </section>
+
+  <!-- ============ SIMULAÇÃO DO CARREGADOR ============ -->
+  <section class="screen no-tab" id="${p}-scr-box">
+    <div class="backbar"><button data-action="closeBox" aria-label="Voltar">‹</button><span class="h-title">Wallbox · demonstração</span></div>
+    <p class="muted" style="text-align:center">É assim que o carregador físico se comporta.<br>Nenhum hardware novo — só o QR Code adesivo.</p>
+    <div class="wallbox">
+      <div class="brand">GOODWE</div>
+      <div class="led idle wb-led"></div>
+      <div class="qrpanel"><svg class="qr-box" width="130" height="130" role="img" aria-label="QR Code do carregador"></svg></div>
+      <div class="socket"></div>
+    </div>
+    <div class="wb-status wb-status">🟢 Disponível para recarga</div>
+    <p class="note">LED verde: disponível · LED azul pulsando: carregando<br>QR Code identifica o carregador no marketplace.</p>
+  </section>
+
+  <!-- ============ TAB BAR ============ -->
+  <nav class="tabbar" id="${p}-tabbar">
+    <button class="tab on" data-scr="${p}-scr-home">
+      <svg viewBox="0 0 24 24"><path d="M3 15l4-8 4 10 4-8 4 6"/></svg><span>Início</span></button>
+    <button class="tab" data-scr="${p}-scr-devices">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="3"/><rect x="4" y="14" width="16" height="7" rx="3"/></svg><span>Dispositivos</span></button>
+    <button class="tab" data-scr="${p}-scr-services">
+      <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg><span>Serviços</span></button>
+    <button class="tab" data-scr="${p}-scr-account">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Conta</span></button>
+  </nav>
+</div>`;
+  }
+
+  const S = {
+    price: 1.89,
+    pub: true,
+    today: 34.78,
+    month: 612.40,
+    week: [38, 52, 41, 76, 64, 90, 34.78],
+    charging: false,
+    kwh: 0, pct: 32, secs: 0, timer: null,
+    prevBox: '',
+    newQty: 1, useHours: 3, serial: '', address: { street: '', number: '', district: '', city: '' },
+    deviceModel: '', devicePower: 7, deviceMeta: '', manualKw: 7,
+    chargers: [
+      { name: 'Garagem do Patrick', model: 'GoodWe HCA', power: 7, pub: true, address: 'Rua das Acácias, 128',
+        serial: 'GWH7-2841-BR', meta: 'Monofásico · 230V, 32A · Tipo 2' },
+    ],
+    selectedCharger: 0, chargingIndex: null, chargingPhase: null, connectTimer: null,
+    vagas: 1,
+    sources: {
+      roof: { sel: true, n: 6 },
+      facade: { sel: false, n: 4 },
+      carport: { sel: false, n: 4 },
+    },
+    solarAllocPct: 60, tariff: 0.78, marginPct: 140,
+    suggestedPrice: 0, custoMedioAtual: 0,
+    targetPct: 80,
+  };
+  const $ = id => document.getElementById(id);
+  const all = cls => document.querySelectorAll('.' + cls);
+  const br = n => n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  const num = (n, d = 1) => n.toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+  const TABS = ['scr-home','scr-devices','scr-services','scr-account'];
+  const BATTERY_KWH = 60; // capacidade típica assumida para a simulação
+  const START_PCT = 32;   // nível de bateria do carro ao conectar (fixo, ilustrativo)
+  const HOST_SHARE = 0.90; // GoodWe fica com 10% de cada transação; o anfitrião recebe o resto
+  const GEN_PER_PANEL = { roof: 2.6, facade: 1.9, carport: 2.2 };
+  const GOODWE_MODELS = [
+    { code: 'GW7K-HCA-20', kw: 7, meta: 'Monofásico · 230V, 32A · Tipo 2' },
+    { code: 'GW11K-HCA-20', kw: 11, meta: 'Trifásico · 400V, 16A · Tipo 2' },
+    { code: 'GW22K-HCA-20', kw: 22, meta: 'Trifásico · 400V, 32A · Tipo 2' },
+  ];
+  const SOURCE_META = {
+    roof: { label: 'Telhado' },
+    facade: { label: 'Fachada' },
+    carport: { label: 'Cobertura de carro' },
+  };
+  const MOCK_CEPS = {
+    '01310100': { street: 'Avenida Paulista', district: 'Bela Vista', city: 'São Paulo/SP' },
+    '20040020': { street: 'Avenida Rio Branco', district: 'Centro', city: 'Rio de Janeiro/RJ' },
+    '30130010': { street: 'Rua da Bahia', district: 'Centro', city: 'Belo Horizonte/MG' },
+    '80010000': { street: 'Rua XV de Novembro', district: 'Centro', city: 'Curitiba/PR' },
+    '04538133': { street: 'Avenida Brigadeiro Faria Lima', district: 'Itaim Bibi', city: 'São Paulo/SP' },
+  };
+  const deviceIconSvg = '<svg width="26" height="38" viewBox="0 0 26 38"><rect x="1" y="1" width="24" height="36" rx="7" fill="none" stroke="#131c2e" stroke-width="2"/><rect x="8" y="8" width="10" height="8" rx="2" fill="#f5333f"/><circle cx="13" cy="26" r="4" fill="none" stroke="#131c2e" stroke-width="2"/></svg>';
+  const CAR_ICON_SVG = '<svg viewBox="0 0 60 40"><ellipse cx="30" cy="35" rx="25" ry="3.5" fill="#0b0d12" opacity=".18"/><path d="M6 24 C5 14,14 6,26 6 L34 6 C46 6,55 14,54 24 L54 27 C54 30,51 32,48 32 L12 32 C9 32,6 30,6 27 Z" fill="#e7ecf4" stroke="#c3ccd9" stroke-width="2"/><circle cx="16" cy="29" r="6" fill="#232838"/><circle cx="44" cy="29" r="6" fill="#232838"/><rect x="6" y="21" width="6" height="4" rx="2" fill="#f5333f"/><rect x="48" y="21" width="6" height="4" rx="2" fill="#f5333f"/></svg>';
+  const EMPTY_SPOT_SVG = '<svg viewBox="0 0 60 40"><rect x="7" y="6" width="46" height="26" rx="7" fill="none" stroke="#c7c9cf" stroke-width="2.5" stroke-dasharray="5 5"/></svg>';
+  const PHONES = ['m']; // versao de um celular só (host e motorista escolhem o papel na hora)
+  const DRIVER_PHONE = 'm';
+
+  /* ---------- per-phone navigation ---------- */
+  function go(fullId){
+    const p = PHONES.find(id => fullId.startsWith(id + '-'));
+    const root = $(p);
+    if (!root) return;
+    root.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = $(fullId);
+    target.classList.add('active');
+    target.scrollTop = 0;
+    const bar = $(p + '-tabbar');
+    const suffix = fullId.slice(p.length + 1);
+    if (TABS.includes(suffix)){
+      bar.classList.add('visible');
+      root.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.scr === fullId));
+    } else bar.classList.remove('visible');
+  }
+
+  /* ---------- host: price & visibility (shared) ---------- */
+  function stepPrice(dir){
+    S.price = clamp(S.price + dir * 0.10, 0.5, 3.5);
+    renderPrice();
+  }
+  function renderPrice(){
+    all('price-val').forEach(el => el.textContent = br(S.price));
+    all('detail-price').forEach(el => el.textContent = br(S.price) + ' / kWh');
+    all('detail-est').forEach(el => el.textContent = br(30 * S.price));
+    renderMapList();
+    renderSelectedCharger();
+  }
+  function togglePublic(on){
+    S.pub = on;
+    all('pub-toggle').forEach(cb => cb.checked = on);
+    all('host-pub-chip').forEach(el => {
+      el.textContent = on ? '● Interruptor geral ligado' : '● Tudo oculto (interruptor geral)';
+      el.className = 'chip ' + (on ? 'good' : 'warn') + ' host-pub-chip';
+    });
+    renderChargersList();
+    renderMapList();
+  }
+  function toggleChargerPub(idx){
+    const c = S.chargers[idx];
+    if (!c) return;
+    c.pub = !c.pub;
+    renderChargersList();
+    renderMapList();
+  }
+  function renderChargersList(){
+    const cardHtml = (c, i) => {
+      // o anfitrião sempre vê o status operacional real do próprio equipamento,
+      // mesmo quando ele está oculto do público (isso é indicado à parte, pelo chip Pública/Privada)
+      const occ = chargerOccupancy(i);
+      const statusChip = occ === 'disponivel' ? '<span class="chip good">● Online</span>' : statusChipHtml(occ);
+      const pubChip = c.pub
+        ? '<span class="chip blue charger-pub-chip" data-action="toggleChargerPub" data-idx="' + i + '" role="button" tabindex="0" style="cursor:pointer">● Pública</span>'
+        : '<span class="chip warn charger-pub-chip" data-action="toggleChargerPub" data-idx="' + i + '" role="button" tabindex="0" style="cursor:pointer">○ Privada</span>';
+      return `
+      <div class="card dev-card" style="margin-bottom:12px">
+        <div class="dev-ic">${deviceIconSvg}</div>
+        <div>
+          <b>${c.name}</b>
+          <div class="muted" style="font-size:.72rem; margin-top:1px">${c.model} · ${num(c.power, c.power % 1 === 0 ? 0 : 1)} kW · N/S ${c.serial}</div>
+          <div style="margin-top:6px">${statusChip} ${pubChip}</div>
+        </div>
+      </div>`;
+    };
+    all('my-chargers-list').forEach(el => { el.innerHTML = S.chargers.map(cardHtml).join(''); });
+    all('my-devices-list').forEach(el => { el.innerHTML = S.chargers.map(cardHtml).join(''); });
+  }
+  function renderEarnings(){
+    all('earn-today').forEach(el => el.textContent = br(S.today));
+    all('earn-month').forEach(el => el.textContent = br(S.month));
+    all('wallet-line').forEach(el => el.textContent = br(S.month) + ' ›');
+    S.week[6] = S.today;
+    const max = Math.max(...S.week);
+    const barsHtml = S.week.map((v, i) => {
+      const hot = i === 6;
+      return `<div class="bcol">${hot ? `<span class="bval money">${br(v)}</span>` : ''}<div class="bar ${hot ? 'hot' : ''}" style="height:${Math.max(6, v / max * 100)}%"></div></div>`;
+    }).join('');
+    all('week-bars').forEach(el => el.innerHTML = barsHtml);
+  }
+
+  /* ---------- shared charger status -> driver map + scene LED ---------- */
+  // disponível (livre) -> em_uso (carro conectado) -> carregando (energia fluindo) -> oculto (desativado)
+  function chargerOccupancy(idx){
+    if (S.chargingIndex !== idx) return 'disponivel';
+    if (S.chargingPhase === 'charging') return 'carregando';
+    if (S.chargingPhase === 'interrupted') return 'interrompido';
+    if (S.chargingPhase === 'connecting') return 'em_uso';
+    return 'disponivel'; // 'waiting_plug': motorista já iniciou, mas o plugue ainda não foi conectado —
+                          // por isso o carregador continua disponível pra outros até a conexão física ser confirmada
+  }
+  function chargerStatusFor(idx){
+    const c = S.chargers[idx];
+    if (!S.pub || !c || !c.pub) return 'oculto';
+    return chargerOccupancy(idx);
+  }
+  const STATUS_META = {
+    disponivel:   { label: 'Disponível',   fg: '#2b6cb0', bg: '#dee9fc' },
+    em_uso:       { label: 'Em uso',       fg: '#9a6b00', bg: '#faeed3' },
+    carregando:   { label: 'Carregando…',  fg: '#0e9a63', bg: '#dcf3ea' },
+    interrompido: { label: 'Interrompido', fg: '#d31e2c', bg: '#fbdde1' },
+    oculto:       { label: 'Indisponível', fg: '#7c8494', bg: '#eceef2' },
+  };
+  const statusChipHtml = (status, extraClass) => {
+    const m = STATUS_META[status];
+    return `<span class="chip ${extraClass || ''}" style="background:${m.bg}; color:${m.fg}">${m.label}</span>`;
+  };
+  function renderMapList(){
+    all('map-charger-list').forEach(el => {
+      el.innerHTML = S.chargers.map((c, i) => {
+        const status = chargerStatusFor(i);
+        const off = status !== 'disponivel' ? ' off' : '';
+        const baseName = c.name.split(' · Unidade')[0];
+        const extra = c.address.startsWith(baseName) ? c.address.slice(baseName.length).replace(/^ · /, '') : c.address;
+        const powerTxt = num(c.power, c.power % 1 === 0 ? 0 : 1) + ' kW AC · Tipo 2';
+        return `
+      <div class="card charger-item${off}" data-action="selectCharger" data-idx="${i}" role="button" tabindex="0">
+        <div class="pin-ic">🏠</div>
+        <div><h3>${c.name}</h3><div class="meta">${extra ? extra + ' · ' : ''}${powerTxt}</div></div>
+        <div class="right"><span class="price-tag money">${br(S.price)}/kWh</span>${statusChipHtml(status)}</div>
+      </div>`;
+      }).join('');
+    });
+    renderScene();
+  }
+  function renderScene(){
+    syncPhysicalLed(); // roda sempre, mesmo em builds sem a cena ilustrada (ex: versão mobile)
+    const bays = document.getElementById('scene-bays');
+    if (!bays) return;
+    if (!S.chargers.length){
+      bays.innerHTML = '<div class="scene-empty">Nenhum carregador cadastrado ainda —<br>use "Cadastrar novo carregador" no celular do Anfitrião.</div>';
+      return;
+    }
+    bays.innerHTML = S.chargers.map((c, i) => {
+      const status = chargerStatusFor(i);
+      const spotSvg = (status === 'carregando' || status === 'em_uso' || status === 'interrompido') ? CAR_ICON_SVG : EMPTY_SPOT_SVG;
+      return `
+      <div class="bay-row bay-${status}">
+        <div class="bay-icon">${deviceIconSvg}<span class="bay-led bay-led-${status}"></span></div>
+        <div class="bay-info"><b>${c.name}</b><span class="bay-status bay-status-${status}">${STATUS_META[status].label}</span></div>
+        <div class="bay-spot">${spotSvg}</div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ---------- LED físico opcional (ESP32 + fita WS2812B) ----------
+     Ligue PHYSICAL_LED.enabled = true quando o ESP32 estiver com o firmware
+     esp32-led-demo.ino rodando e o notebook conectado na rede "GoodWe-Demo".
+     Como só existe UM carregador físico de mentira, o LED sempre reflete
+     QUALQUER carregador que estiver com uma sessão ativa no momento
+     (S.chargingIndex) — não um índice fixo — assim funciona mesmo se o
+     motorista escolher um carregador cadastrado depois do padrão. */
+  const PHYSICAL_LED = {
+    enabled: true,
+    url: 'http://192.168.4.1',
+    lastStatus: null,
+    lastPct: null,
+  };
+  /* Cores só pra fita física — separadas das cores da tela (STATUS_META).
+     Usamos as cores PURAS (mesmas testadas e confirmadas certas na fita
+     real: r=255/g=0/b=0, r=0/g=255/b=0, r=0/g=0/b=255, r=255/g=255/b=0)
+     em vez das cores "de marca" mais suaves do app, porque essas puras
+     são as que renderizam certinho no LED físico. */
+  const LED_RGB = {
+    disponivel:   [0, 0, 255],
+    em_uso:       [255, 255, 0],
+    carregando:   [0, 255, 0],
+    interrompido: [255, 0, 0],
+    oculto:       [0, 0, 0],
+  };
+  /* modo de animação da fita, ver esp32-led-demo.ino:
+     0 = parado | 1 = respirando (em uso / interrompido) | 2 = correndo/girando (carregando)
+     Com o W vazado da capa impressa, poucos LEDs ficam atrás do recorte —
+     o antigo modo 3 (enchendo tipo bateria) não rende visualmente; o verde
+     girando contínuo pelo W ficou sendo o efeito do "carregando". */
+  const LED_MODE = {
+    disponivel:   0,
+    em_uso:       1,
+    carregando:   2,
+    interrompido: 1,
+    oculto:       0,
+  };
+  function syncPhysicalLed(){
+    if (!PHYSICAL_LED.enabled) return;
+    // fora de uma sessão ativa, o LED reflete o carregador padrão (0) — inclusive
+    // se ele foi desativado (oculto); durante uma sessão, segue quem está carregando
+    const idx = S.chargingIndex !== null ? S.chargingIndex : 0;
+    const status = S.chargers.length ? chargerStatusFor(idx) : 'oculto';
+    const mode = LED_MODE[status];
+    // só o modo 3 (enchendo, hoje sem uso) depende da % — nos demais, o progresso
+    // da bateria não muda nada na fita, então não gera reenvio a cada tick
+    const pct = mode === 3 ? Math.round(S.pct) : null;
+    const statusChanged = status !== PHYSICAL_LED.lastStatus;
+    const pctChanged = pct !== null && pct !== PHYSICAL_LED.lastPct;
+    if (!statusChanged && !pctChanged) return;
+    PHYSICAL_LED.lastStatus = status;
+    PHYSICAL_LED.lastPct = pct;
+    const [r, g, b] = LED_RGB[status];
+    let url = `${PHYSICAL_LED.url}/led?r=${r}&g=${g}&b=${b}&mode=${mode}`;
+    if (mode === 3) url += `&pct=${pct}`;
+    fetch(url).catch(() => {
+      /* ESP32 desligado/fora do alcance — ignora silenciosamente, não trava a demo */
+    });
+  }
+
+  /* ---------- botão físico opcional (simula plugue conectando/desconectando) ----------
+     A cada ~400ms o navegador pergunta ao ESP32 se o botão foi apertado desde a
+     última vez (o firmware guarda esse evento e "esquece" assim que é lido, ver
+     esp32-led-demo.ino). O mesmo clique físico serve pra 3 coisas diferentes,
+     dependendo da fase atual da recarga — por isso a lógica mora toda em
+     handlePhysicalButtonPress(). */
+  function pollPhysicalButton(){
+    if (!PHYSICAL_LED.enabled) return;
+    fetch(`${PHYSICAL_LED.url}/button`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data) return;
+        if (data.long) resetDemo();          // aperto de 1,5s+ = reset geral da demo
+        else if (data.event) handlePhysicalButtonPress();
+      })
+      .catch(() => {
+        /* ESP32 desligado/fora do alcance — ignora silenciosamente, não trava a demo */
+      });
+  }
+  setInterval(pollPhysicalButton, 400);
+  /* Reset geral da demonstração (aperto longo no botão físico): limpa qualquer
+     sessão pendurada — inclusive uma recarga interrompida que nunca foi
+     finalizada, cujo progresso guardado faria a próxima "carga" terminar em
+     1-2s — e devolve tudo ao estado inicial, com o LED azul. A mudança é
+     estrutural, então o sync empurra o estado limpo pro outro celular também. */
+  function resetDemo(){
+    clearInterval(S.timer); clearTimeout(S.connectTimer);
+    S.timer = null; S.connectTimer = null;
+    S.charging = false; S.chargingIndex = null; S.chargingPhase = null;
+    S.kwh = 0; S.pct = START_PCT; S.secs = 0; S.targetPct = 80; S.pendingHost = 0;
+    setBox(false);
+    // força o próximo syncTick a EMPURRAR o estado limpo pro quadro do ESP32,
+    // mesmo que a estrutura pareça "igual" (após uma recarga concluída, o reset
+    // quase não muda campos estruturais — sem isso, os zeros nunca subiam e o
+    // quadro continuava com os kWh finais da recarga anterior)
+    SYNC.lastKnownContent = null;
+    renderMapList(); renderChargersList(); renderChargeTarget(); renderCharge();
+    PHONES.forEach(p => go(p + '-scr-home'));
+  }
+  function handlePhysicalButtonPress(){
+    if (S.chargingIndex === null) return; // nenhuma sessão ativa em nenhum carregador agora
+    if (S.chargingPhase === 'waiting_plug') beginHandshake();
+    else if (S.chargingPhase === 'charging') interruptCharge();
+    else if (S.chargingPhase === 'interrupted') resumeCharge();
+  }
+  function selectCharger(idx, p){
+    if (chargerStatusFor(idx) !== 'disponivel') return;
+    S.selectedCharger = idx;
+    renderSelectedCharger();
+    go(p + '-scr-detail');
+  }
+  function renderSelectedCharger(){
+    const c = S.chargers[S.selectedCharger] || S.chargers[0];
+    if (!c) return;
+    const powerTxt = num(c.power, c.power % 1 === 0 ? 0 : 1) + ' kW';
+    all('charger-name').forEach(el => el.textContent = c.name);
+    all('charger-address').forEach(el => el.textContent = c.address);
+    all('charger-connector').forEach(el => el.textContent = `Tipo 2 · ${powerTxt} AC`);
+    all('pay-price').forEach(el => el.textContent = `Tipo 2 · ${powerTxt} · ${br(S.price)}/kWh`);
+    all('chg-power').forEach(el => el.textContent = powerTxt);
+    const status = chargerStatusFor(S.selectedCharger);
+    const m = STATUS_META[status];
+    all('charger-detail-status').forEach(el => {
+      el.textContent = m.label;
+      el.className = 'chip charger-detail-status';
+      el.style.background = m.bg;
+      el.style.color = m.fg;
+    });
+  }
+
+  /* ---------- payment ---------- */
+  function selPay(el){
+    el.parentElement.querySelectorAll('.payopt').forEach(o => o.classList.remove('sel'));
+    el.classList.add('sel');
+  }
+
+  /* ---------- meta de carga: por % ou por valor (R$), sempre em sincronia ---------- */
+  function renderChargeTarget(skipMoneyEl){
+    const kwhNeeded = Math.max(0, (S.targetPct - START_PCT) / 100 * BATTERY_KWH);
+    const cost = kwhNeeded * S.price;
+    all('target-start-pct').forEach(el => el.textContent = START_PCT);
+    all('target-pct-val').forEach(el => el.textContent = Math.round(S.targetPct) + '%');
+    all('target-kwh').forEach(el => el.textContent = num(kwhNeeded) + ' kWh');
+    all('target-cost').forEach(el => el.textContent = br(cost));
+    document.querySelectorAll('.target-money-input').forEach(el => {
+      if (el !== skipMoneyEl) el.value = cost > 0 ? cost.toFixed(2).replace('.', ',') : '';
+    });
+  }
+  function stepTargetPct(dir){
+    S.targetPct = clamp(S.targetPct + dir * 5, START_PCT, 100);
+    renderChargeTarget();
+  }
+  function handleTargetMoneyInput(el){
+    const val = parseFloat(el.value.replace(/\./g, '').replace(',', '.')) || 0;
+    const kwhBought = S.price > 0 ? val / S.price : 0;
+    S.targetPct = clamp(START_PCT + kwhBought / BATTERY_KWH * 100, START_PCT, 100);
+    renderChargeTarget(el);
+  }
+
+  /* ---------- charging sim (shared): aguardando plugue -> conectando -> carregando (<-> interrompido) -> concluído ---------- */
+  function startCharge(p){
+    S.charging = true; S.chargingIndex = S.selectedCharger; S.chargingPhase = 'waiting_plug';
+    S.kwh = 0; S.pct = START_PCT; S.secs = 0;
+    setBox(true);
+    renderMapList();
+    renderChargersList();
+    go(p + '-scr-charging');
+    renderChargeScreen();
+    renderCharge();
+    clearInterval(S.timer);
+    clearTimeout(S.connectTimer);
+  }
+  // acionado pelo botão físico do ESP32 (plugue conectado) ou pelo botão de simulação na tela
+  function beginHandshake(){
+    if (!S.charging || S.chargingPhase !== 'waiting_plug') return;
+    S.chargingPhase = 'connecting';
+    renderMapList();
+    renderChargersList();
+    renderChargeScreen();
+    clearTimeout(S.connectTimer);
+    S.connectTimer = setTimeout(() => {
+      if (!S.charging) return; // recarga cancelada antes de a conexão terminar
+      S.chargingPhase = 'charging';
+      renderMapList();
+      renderChargersList();
+      renderChargeScreen();
+      startMeter();
+    }, 2200);
+  }
+  function startMeter(){
+    clearInterval(S.timer);
+    const power = (S.chargers[S.selectedCharger] || S.chargers[0]).power;
+    S.timer = setInterval(() => {
+      const e = power * 150 / 3600;
+      S.kwh += e; S.secs += 150;
+      S.pct = Math.min(S.targetPct, START_PCT + S.kwh / BATTERY_KWH * 100);
+      renderCharge();
+      if (S.pct >= S.targetPct) finishCharge(true, DRIVER_PHONE);
+    }, 90);
+    renderCharge();
+  }
+  // acionado pelo botão físico (plugue solto) ou pelo botão de simulação — pausa o medidor sem zerar o progresso
+  function interruptCharge(){
+    if (!S.charging || S.chargingPhase !== 'charging') return;
+    S.chargingPhase = 'interrupted';
+    clearInterval(S.timer);
+    renderMapList();
+    renderChargersList();
+    renderChargeScreen();
+  }
+  // acionado pelo botão físico (plugue reconectado) ou pelo botão de simulação — retoma de onde parou
+  function resumeCharge(){
+    if (!S.charging || S.chargingPhase !== 'interrupted') return;
+    S.chargingPhase = 'charging';
+    renderMapList();
+    renderChargersList();
+    renderChargeScreen();
+    startMeter();
+  }
+  const CHARGE_PHASE_META = {
+    waiting_plug: { chip: '🔌 Aguardando conexão do plugue…', bg: '#242a35', fg: '#aeb4c0', phaseLabel: 'Aguardando conexão…' },
+    connecting:   { chip: '🔌 Conectando ao veículo…',        bg: '#3a2f12', fg: '#f2b01e', phaseLabel: 'Conectando…' },
+    charging:     { chip: '⚡ Carregando…',                    bg: '#12304d', fg: '#5aa7ff', phaseLabel: null },
+    interrupted:  { chip: '⛔ Conexão interrompida',           bg: '#3a1418', fg: '#ff6b7a', phaseLabel: 'Interrompido — reconecte o plugue' },
+  };
+  function renderChargeScreen(){
+    const phase = S.chargingPhase;
+    const meta = CHARGE_PHASE_META[phase] || CHARGE_PHASE_META.charging;
+    const showPct = phase === 'charging' || phase === 'interrupted';
+    all('chg-status').forEach(el => {
+      el.textContent = meta.chip;
+      el.style.background = meta.bg;
+      el.style.color = meta.fg;
+    });
+    all('chg-pct').forEach(el => el.textContent = showPct ? Math.floor(S.pct) + '%' : '—');
+    all('chg-phase-label').forEach(el => el.textContent = meta.phaseLabel || `Bateria · meta ${Math.round(S.targetPct)}%`);
+    all('ring').forEach(el => {
+      el.classList.toggle('ring-connecting', phase !== 'charging');
+      el.style.strokeDashoffset = showPct ? (578 - 578 * (S.pct / 100)) : 578;
+    });
+    renderChargePlugActions(phase);
+  }
+  // botões de apoio em tela — usados quando o botão físico não estiver disponível/conectado
+  let lastPlugActionsPhase = null;
+  function renderChargePlugActions(phase){
+    // renderCharge() chama isso a cada 90ms enquanto carrega; sem essa trava, o botão seria
+    // recriado (innerHTML) nesse intervalo e um clique real (mousedown...mouseup) podia cair
+    // bem no meio da troca e nunca disparar o evento "click" — por isso não funcionava.
+    if (phase === lastPlugActionsPhase) return;
+    lastPlugActionsPhase = phase;
+    let html = '';
+    if (phase === 'waiting_plug') {
+      html = `<button class="btn ghost" style="border-color:#3577f1; color:#5aa7ff" data-action="beginHandshake">🔌 Simular conexão do plugue</button>`;
+    } else if (phase === 'charging') {
+      html = `<button class="btn ghost" style="border-color:#4a5568; color:#8a93a3; font-size:.82rem; padding:8px" data-action="interruptCharge">Simular desconexão do plugue</button>`;
+    } else if (phase === 'interrupted') {
+      html = `<button class="btn ghost" style="border-color:#19c37d; color:#4fd39b; margin-bottom:8px" data-action="resumeCharge">🔌 Simular reconexão do plugue</button>
+        <button class="btn" style="background:var(--red-dark)" data-action="finishCharge">Finalizar mesmo assim</button>`;
+    }
+    all('chg-plug-actions').forEach(el => el.innerHTML = html);
+  }
+  function renderCharge(){
+    all('chg-kwh').forEach(el => el.textContent = S.kwh.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' kWh');
+    all('chg-cost').forEach(el => el.textContent = br(S.kwh * S.price));
+    all('chg-time').forEach(el => el.textContent = Math.round(S.secs / 60) + ' min');
+    renderChargeScreen();
+    syncPhysicalLed(); // mantém a fita física enchendo em tempo real durante o carregamento
+  }
+  function finishCharge(auto, p){
+    if (!S.charging) return;
+    S.charging = false;
+    S.chargingIndex = null;
+    S.chargingPhase = null;
+    clearInterval(S.timer);
+    clearTimeout(S.connectTimer);
+    all('chg-status').forEach(el => el.textContent = '✓ Recarga encerrada');
+    setBox(false);
+    renderMapList();
+    renderChargersList();
+    const total = S.kwh * S.price, host = total * HOST_SHARE;
+    all('rc-kwh').forEach(el => el.textContent = S.kwh.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' kWh');
+    all('rc-time').forEach(el => el.textContent = Math.round(S.secs / 60) + ' min' + (auto ? ' · meta ' + Math.round(S.targetPct) + '% atingida' : ''));
+    all('rc-rate').forEach(el => el.textContent = br(S.price) + ' / kWh');
+    all('rc-total').forEach(el => el.textContent = br(total));
+    all('rc-host').forEach(el => el.textContent = '+ ' + br(host));
+    all('rc-fee').forEach(el => el.textContent = br(total - host));
+    S.pendingHost = host;
+    setTimeout(() => go(p + '-scr-receipt'), auto ? 700 : 250);
+  }
+  function rate(n){
+    all('stars').forEach(container => {
+      container.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i < n));
+    });
+  }
+  function concludeReceipt(p){
+    if (S.pendingHost){
+      S.today += S.pendingHost;
+      S.month += S.pendingHost;
+      const addedAmt = S.pendingHost;
+      S.pendingHost = 0;
+      const anyKwh = document.querySelector('.rc-kwh');
+      const kwhText = anyKwh ? anyKwh.textContent : '';
+      const rowHtml = `<div class="sess"><div><b>Recarga da demonstração</b><span class="muted">Agora · ${kwhText}</span></div><span class="amt money">+ ${br(addedAmt)}</span></div>`;
+      all('sess-list').forEach(el => el.insertAdjacentHTML('afterbegin', rowHtml));
+      renderEarnings();
+    }
+    all('chg-status').forEach(el => el.textContent = '⚡ Carregando…');
+    go(p + '-scr-home');
+  }
+
+  /* ---------- cadastro de carregador (per-phone form, shared result) ---------- */
+  function formatCep(v){
+    const d = v.replace(/\D/g, '').slice(0, 8);
+    return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;
+  }
+  function setCepStatus(p, msg, warn){
+    const el = $(p + '-cep-status');
+    el.textContent = msg;
+    el.style.color = warn ? 'var(--red)' : 'var(--muted)';
+  }
+  async function lookupCep(p){
+    const input = $(p + '-cep-input');
+    const digits = input.value.replace(/\D/g, '');
+    if (digits.length !== 8){
+      setCepStatus(p, 'CEP inválido — digite os 8 números.', true);
+      return;
+    }
+    setCepStatus(p, 'Buscando endereço…', false);
+    let data = null, source = 'api';
+    try {
+      // limite de 3s: sem isso, numa rede sem internet (ex: conectado no ESP32) o
+      // fetch pode ficar "pendurado" por muito tempo antes de falhar sozinho
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`, { signal: AbortSignal.timeout(3000) });
+      const json = await res.json();
+      if (!json.erro) data = { street: json.logradouro, district: json.bairro, city: `${json.localidade}/${json.uf}` };
+    } catch (e) { /* sem internet, bloqueado, ou demorou demais — usa a base local abaixo */ }
+    if (!data) { data = MOCK_CEPS[digits]; source = 'mock'; }
+    // sem internet e CEP fora da base local: preenche um endereço de exemplo em vez de deixar em branco,
+    // pra não travar o cadastro durante a demonstração (o anfitrião ainda pode editar tudo à mão)
+    if (!data) { data = { street: 'Rua Exemplo', district: 'Bairro Exemplo', city: 'Cidade/UF' }; source = 'placeholder'; }
+
+    $(p + '-addr-street').value = data.street;
+    $(p + '-addr-district').value = data.district;
+    $(p + '-addr-city').value = data.city;
+    $(p + '-cep-result').style.display = 'block';
+    $(p + '-addr-number').focus();
+    const msg = source === 'api' ? 'Endereço encontrado — confira e complete o número.'
+      : source === 'mock' ? 'Endereço encontrado (base local) — confira e complete o número.'
+      : 'Sem internet no momento — preenchemos um endereço de exemplo, edite como quiser.';
+    setCepStatus(p, msg, source === 'placeholder');
+  }
+  function stepQty(dir){
+    S.newQty = clamp(S.newQty + dir, 1, 20);
+    all('qty-val').forEach(el => el.textContent = S.newQty);
+  }
+  function goScanDevice(p){
+    if ($(p + '-cep-result').style.display === 'none'){
+      setCepStatus(p, 'Busque o CEP antes de continuar.', true);
+      $(p + '-cep-input').focus();
+      return;
+    }
+    if (!$(p + '-addr-number').value.trim()){
+      setCepStatus(p, 'Preencha o número do imóvel antes de continuar.', true);
+      $(p + '-addr-number').focus();
+      return;
+    }
+    go(p + '-scr-scan-device');
+  }
+  function randomSerial(prefix){
+    return prefix.replace(/\s+/g, '').toUpperCase() + '-' + Math.floor(1000 + Math.random() * 8999) + '-BR';
+  }
+  function finishRegistration(p){
+    S.address = {
+      street: $(p + '-addr-street').value.trim(),
+      number: $(p + '-addr-number').value.trim(),
+      district: $(p + '-addr-district').value.trim(),
+      city: $(p + '-addr-city').value.trim(),
+    };
+    const parts = [
+      S.address.street ? `${S.address.street}, ${S.address.number}` : '',
+      S.address.district, S.address.city,
+    ].filter(Boolean);
+    const addressStr = parts.length ? parts.join(' · ') : 'Endereço não informado';
+    all('res-model').forEach(el => el.textContent = S.deviceModel);
+    all('res-meta').forEach(el => el.textContent = S.deviceMeta);
+    all('res-address').forEach(el => el.textContent = addressStr);
+    all('res-serial').forEach(el => el.textContent = 'N/S ' + S.serial);
+    all('res-power').forEach(el => el.textContent = num(S.devicePower, S.devicePower % 1 === 0 ? 0 : 1) + ' kW');
+    all('res-qty').forEach(el => el.textContent = S.newQty + (S.newQty > 1 ? ' unidades' : ' unidade'));
+    S.vagas = S.newQty;
+    // cada máquina cadastrada vira um carregador independente — cada um com sua própria
+    // disponibilidade, para que "1 ocupado" não esconda os outros da mesma vaga/endereço
+    const baseName = (S.address.street || addressStr.split(' · ')[0] || S.deviceModel) + (S.address.number ? ', ' + S.address.number : '');
+    for (let i = 0; i < S.newQty; i++){
+      S.chargers.push({
+        name: baseName + (S.newQty > 1 ? ` · Unidade ${i + 1}` : ''),
+        model: S.deviceModel, power: S.devicePower, pub: true,
+        address: addressStr, serial: i === 0 ? S.serial : randomSerial(S.deviceModel), meta: S.deviceMeta,
+      });
+    }
+    renderChargersList();
+    renderDeviceResult();
+    renderMapList();
+    go(p + '-scr-device-result');
+  }
+  function registerDevice(p){
+    const picked = GOODWE_MODELS[Math.floor(Math.random() * GOODWE_MODELS.length)];
+    S.deviceModel = picked.code;
+    S.devicePower = picked.kw;
+    S.deviceMeta = picked.meta;
+    S.serial = randomSerial(picked.code);
+    finishRegistration(p);
+  }
+  function selManualModel(el, p){
+    const model = el.dataset.model;
+    if (model === 'other'){
+      $(p + '-manual-custom-fields').style.display = 'block';
+      $(p + '-manual-name').focus();
+      return;
+    }
+    const found = GOODWE_MODELS.find(m => m.code === model);
+    S.deviceModel = found.code;
+    S.devicePower = found.kw;
+    S.deviceMeta = found.meta;
+    S.serial = randomSerial(found.code);
+    finishRegistration(p);
+  }
+  function stepManualKw(dir){
+    S.manualKw = clamp(S.manualKw + dir, 1, 50);
+    all('manual-kw-val').forEach(el => el.textContent = S.manualKw + ' kW');
+  }
+  function confirmManualDevice(p){
+    S.deviceModel = $(p + '-manual-name').value.trim() || 'Equipamento personalizado';
+    S.devicePower = S.manualKw;
+    S.deviceMeta = ($(p + '-manual-connector').value.trim() || 'Tipo 2 · AC') + ' · especificado manualmente';
+    S.serial = randomSerial('CUSTOM');
+    finishRegistration(p);
+  }
+  function stepHours(dir){
+    S.useHours = clamp(S.useHours + dir, 1, 12);
+    renderDeviceResult();
+  }
+  function renderDeviceResult(){
+    all('hours-val').forEach(el => el.textContent = S.useHours + ' h');
+    const perUnit = S.devicePower * S.useHours;
+    all('res-consumo-unit').forEach(el => el.textContent = num(perUnit) + ' kWh/dia');
+    all('res-consumo-total').forEach(el => el.textContent = num(perUnit * S.newQty) + ' kWh/dia');
+  }
+  function goViability(p){
+    renderViability();
+    go(p + '-scr-viability');
+  }
+
+  /* ---------- análise de viabilidade (shared) ---------- */
+  function stepVagas(dir){ S.vagas = clamp(S.vagas + dir, 1, 50); renderViability(); }
+  function toggleSource(key){
+    S.sources[key].sel = !S.sources[key].sel;
+    renderViability();
+  }
+  function stepSourcePanels(key, dir){
+    S.sources[key].n = clamp(S.sources[key].n + dir, 1, 60);
+    renderViability();
+  }
+  function stepAlloc(dir){ S.solarAllocPct = clamp(S.solarAllocPct + dir * 10, 0, 100); renderViability(); }
+  function stepTariff(dir){ S.tariff = clamp(+(S.tariff + dir * 0.05).toFixed(2), 0.10, 3); renderViability(); }
+  function stepMargin(dir){ S.marginPct = clamp(S.marginPct + dir * 10, 0, 400); renderViability(); }
+  function handleSuggestedPriceChange(el){
+    const typed = parseFloat(el.value.replace(/\./g, '').replace(',', '.'));
+    if (isFinite(typed) && typed > 0 && S.custoMedioAtual > 0){
+      S.marginPct = clamp(Math.round((typed / S.custoMedioAtual - 1) * 100), 0, 2000);
+    }
+    renderViability();
+  }
+
+  function renderSourcePanels(){
+    const keys = Object.keys(S.sources).filter(k => S.sources[k].sel);
+    const html = !keys.length
+      ? `<p class="muted" style="text-align:center; margin:14px 0">Nenhuma fonte solar selecionada — 100% da energia virá da rede.</p>`
+      : keys.map(k => {
+          const meta = SOURCE_META[k], src = S.sources[k], gen = GEN_PER_PANEL[k];
+          return `
+        <div class="card" style="margin-top:12px">
+          <div class="spread">
+            <div>
+              <h4 class="label-caps">Placas · ${meta.label}</h4>
+              <div class="muted" style="font-size:.72rem; margin-top:2px">Geração: ${num(gen)} kWh/dia por placa</div>
+            </div>
+            <div class="stepper">
+              <button data-action="stepSourcePanels" data-src="${k}" data-dir="-1" aria-label="Diminuir">−</button>
+              <span class="val">${src.n}</span>
+              <button data-action="stepSourcePanels" data-src="${k}" data-dir="1" aria-label="Aumentar">＋</button>
+            </div>
+          </div>
+          <hr style="border:none; border-top:1px solid var(--line); margin:14px 0">
+          <div class="rc-line"><span class="muted">Subtotal ${meta.label.toLowerCase()}</span><b>${num(gen * src.n)} kWh/dia</b></div>
+        </div>`;
+        }).join('');
+    all('source-panels-container').forEach(el => el.innerHTML = html);
+  }
+
+  function renderViability(){
+    all('vagas-val').forEach(el => el.textContent = S.vagas);
+    all('alloc-val').forEach(el => el.textContent = S.solarAllocPct + '%');
+    all('tariff-val').forEach(el => el.textContent = br(S.tariff));
+
+    document.querySelectorAll('.srcopt').forEach(t => {
+      const sel = S.sources[t.dataset.src].sel;
+      t.classList.toggle('sel', sel);
+      t.setAttribute('aria-pressed', sel);
+    });
+    renderSourcePanels();
+
+    const potenciaUnit = S.devicePower;
+    const consumoUnitDia = potenciaUnit * S.useHours;
+    const consumoTotalDia = consumoUnitDia * S.vagas;
+
+    const geracaoTotal = Object.keys(S.sources).reduce((sum, k) =>
+      sum + (S.sources[k].sel ? GEN_PER_PANEL[k] * S.sources[k].n : 0), 0);
+    all('gen-total').forEach(el => el.textContent = num(geracaoTotal) + ' kWh/dia');
+
+    const solarParaRecarga = geracaoTotal * (S.solarAllocPct / 100);
+    const solarUsado = Math.min(solarParaRecarga, consumoTotalDia);
+    const redeDia = Math.max(0, consumoTotalDia - solarUsado);
+    const totalDia = solarUsado + redeDia || 1;
+    all('split-solar').forEach(el => el.style.width = (solarUsado / totalDia * 100) + '%');
+    all('split-grid').forEach(el => el.style.width = (redeDia / totalDia * 100) + '%');
+    all('leg-solar').forEach(el => el.textContent = num(solarUsado) + ' kWh');
+    all('leg-grid').forEach(el => el.textContent = num(redeDia) + ' kWh');
+
+    const custoRedeDia = redeDia * S.tariff;
+    const custoMedio = consumoTotalDia > 0 ? custoRedeDia / consumoTotalDia : 0;
+    all('cost-grid-day').forEach(el => el.textContent = br(custoRedeDia));
+    all('cost-avg-kwh').forEach(el => el.textContent = br(custoMedio) + '/kWh');
+    S.custoMedioAtual = custoMedio;
+
+    // piso real: preço mínimo que, mesmo após a GoodWe reter sua taxa, ainda cobre o custo do anfitrião
+    const precoMinimo = custoMedio / HOST_SHARE;
+    all('floor-price').forEach(el => el.textContent = br(precoMinimo));
+    const precoSugerido = Math.max(custoMedio * (1 + S.marginPct / 100), precoMinimo);
+    // quando o piso "segura" o preço, a margem exibida passa a refletir
+    // a margem real daquele preço — nunca mostramos uma % que não bate com o R$ na tela
+    if (custoMedio > 0) S.marginPct = (precoSugerido / custoMedio - 1) * 100;
+    all('margin-val').forEach(el => el.textContent = Math.round(S.marginPct) + '%');
+    all('suggested-price-input').forEach(el => el.value = precoSugerido.toFixed(2).replace('.', ','));
+    S.suggestedPrice = precoSugerido;
+
+    const lucroUnitDia = (precoSugerido - custoMedio) * consumoUnitDia;
+    const lucroMes = lucroUnitDia * S.vagas * 30;
+    all('profit-unit').forEach(el => el.textContent = br(lucroUnitDia) + '/dia');
+    all('profit-total').forEach(el => el.textContent = br(lucroMes) + '/mês');
+  }
+  function applySuggestedPrice(p){
+    S.price = Math.round(S.suggestedPrice * 100) / 100;
+    renderPrice();
+    go(p + '-scr-host');
+  }
+
+  /* ---------- wallbox sim (shared) ---------- */
+  function openBox(from){
+    S.prevBox = from;
+    const p = PHONES.find(id => from.startsWith(id + '-'));
+    go(p + '-scr-box');
+  }
+  function closeBox(){ go(S.prevBox); }
+  function setBox(busy){
+    all('wb-led').forEach(el => el.className = 'led wb-led ' + (busy ? 'busy' : 'idle'));
+    all('wb-status').forEach(el => el.textContent = busy ? '🔵 Carregando · sessão ativa' : '🟢 Disponível para recarga');
+  }
+
+  /* ---------- fake QR (deterministic, drawn identically into every matching phone) ---------- */
+  function drawQR(cls, size, seed = 20260807){
+    all(cls).forEach(svg => {
+      let s = seed;
+      const n = 21, m = size * 0.09, cell = (size - 2 * m) / n;
+      const px = i => (m + i * cell).toFixed(1);
+      const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+      const inFinder = (x, y) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7);
+      let out = `<rect width="${size}" height="${size}" rx="${size*0.05}" fill="#fff"/>`;
+      for (let y = 0; y < n; y++)
+        for (let x = 0; x < n; x++)
+          if (!inFinder(x, y) && rnd() > 0.55)
+            out += `<rect x="${px(x)}" y="${px(y)}" width="${cell.toFixed(1)}" height="${cell.toFixed(1)}" fill="#131c2e"/>`;
+      [[0,0],[n-7,0],[0,n-7]].forEach(([fx, fy]) => {
+        out += `<rect x="${px(fx)}" y="${px(fy)}" width="${7*cell}" height="${7*cell}" fill="#131c2e"/>
+          <rect x="${px(fx+1)}" y="${px(fy+1)}" width="${5*cell}" height="${5*cell}" fill="#fff"/>
+          <rect x="${px(fx+2)}" y="${px(fy+2)}" width="${3*cell}" height="${3*cell}" fill="#131c2e"/>`;
+      });
+      svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+      svg.innerHTML = out;
+    });
+  }
+
+  /* ---------- sincronização entre celulares, via ESP32 ----------
+     Cada celular abre essa página sozinho, direto no ESP32 (mesma origem,
+     por isso os endereços abaixo são relativos). Não existe um "dono" da
+     verdade — cada celular periodicamente MANDA seu estado (POST /state)
+     e PERGUNTA se tem novidade (GET /state), e quem receber uma versão
+     diferente da que já tem substitui a própria e redesenha a tela.
+     Isso é "melhor esforço", não é um banco de dados de verdade — em uma
+     demonstração ao vivo, com uma pessoa de cada vez mexendo, funciona
+     bem; se duas pessoas mexerem ao mesmo tempo no exato mesmo instante,
+     a última a sincronizar "ganha". timer/connectTimer ficam de fora do
+     que é sincronizado de propósito: são ids de setInterval/setTimeout
+     válidos só dentro do celular que os criou, não fazem sentido no
+     outro aparelho. */
+  /* Cada celular manda o estado inteiro periodicamente, então os dois podem
+     tentar mandar ao "mesmo tempo". Pra ninguém sobrescrever a atualização
+     mais nova do outro com uma cópia desatualizada, todo estado carrega um
+     "_rev" (timestamp) — só aceitamos uma atualização recebida se ela for
+     realmente mais nova que a que já temos; e sempre que nosso conteúdo muda
+     (seja por uma ação local, seja por algo que acabamos de receber), damos
+     um _rev novo e reafirmamos pro servidor. Isso converge sozinho em 1-2
+     ciclos (~1,5s) mesmo se uma sobrescrita acidental acontecer no meio. */
+  const SYNC = { enabled: true, lastKnownContent: null, pulling: false };
+  // kwh/pct/secs ficam de fora do controle de "quem é mais novo": eles mudam
+  // sozinhos, a cada instante, enquanto o cronômetro de carregamento roda —
+  // se contassem como "edição nova" pra fins de revisão, o celular com o
+  // cronômetro de verdade rodando venceria toda disputa só por estar sempre
+  // "atualizando", mesmo contra uma ação real e mais importante do outro
+  // celular (tipo apertar "interromper"). Por isso eles têm uma regra própria,
+  // mais simples: quem NÃO tem um cronômetro local rodando sempre aceita os
+  // números de quem tem — não tem "mais novo", só tem "de quem é o relógio
+  // de verdade agora".
+  // o que de fato é sincronizado: nunca inclui timer/connectTimer (ids de
+  // setInterval/setTimeout, só fazem sentido dentro do celular que os criou)
+  function syncPayload(){
+    const { timer, connectTimer, ...shareable } = S;
+    return shareable;
+  }
+  // conteúdo "estrutural" — tudo, exceto os campos ao vivo e os locais-only —
+  // é o que decide se uma atualização recebida é realmente mais nova
+  function structuralContent(){
+    const { timer, connectTimer, _rev, kwh, pct, secs, ...rest } = S;
+    return JSON.stringify(rest);
+  }
+  function renderEverything(){
+    renderPrice(); renderEarnings(); renderChargersList(); renderDeviceResult();
+    renderViability(); renderMapList(); renderSelectedCharger(); renderChargeTarget();
+    renderChargeScreen(); renderCharge();
+  }
+  function syncTick(){
+    if (!SYNC.enabled || SYNC.pulling) return;
+    SYNC.pulling = true;
+    fetch('/state').then(r => r.text()).then(text => {
+      SYNC.pulling = false;
+      let remote = null;
+      if (text && text !== '{}'){
+        try { remote = JSON.parse(text); } catch (e) { /* ignora resposta inválida */ }
+      }
+      let changed = false;
+      if (remote){
+        if (!S._rev || remote._rev > S._rev){
+          // alguém tem uma versão estrutural mais nova: adota, SEM gerar uma
+          // revisão nova aqui — se gerássemos, um mero "eco" de dado recebido
+          // podia parecer "mais novo" que uma edição local genuína do outro
+          // celular e atropelar ela por acidente
+          const hadLocalTimer = !!S.timer;
+          const { kwh, pct, secs, ...remoteStructural } = remote;
+          Object.assign(S, remoteStructural);
+          if (hadLocalTimer && S.chargingPhase !== 'charging'){
+            clearInterval(S.timer); // outro celular interrompeu/encerrou — para nosso cronômetro de verdade
+            S.timer = null;
+          }
+          // importante: já marca esse conteúdo como "conhecido" AGORA — senão,
+          // na checagem lá embaixo, isso pareceria uma edição LOCAL nova (já
+          // que é diferente do que tínhamos antes) e ganharia um carimbo de
+          // hora mais novo só por termos acabado de recebê-lo, criando um
+          // efeito cascata onde um mero "eco" ultrapassa um progresso local
+          // genuíno que ainda não tinha sido enviado (foi esse o bug que
+          // deixava preso em "Conectando")
+          SYNC.lastKnownContent = structuralContent();
+          changed = true;
+        }
+        if (!S.timer && typeof remote.kwh === 'number'
+            && (remote.chargingPhase === 'charging' || remote.chargingPhase === 'interrupted')){
+          // não temos cronômetro real rodando aqui: espelha os números de quem
+          // tem — MAS só enquanto existe uma recarga ativa de verdade. Sem essa
+          // trava, os kWh/% finais da recarga ANTERIOR (que ficam guardados no
+          // quadro do ESP32) eram "espelhados de volta" logo após um reset ou um
+          // novo início, e a recarga nova nascia quase completa — era o bug da
+          // carga que terminava em 1 segundo.
+          if (S.kwh !== remote.kwh || S.pct !== remote.pct || S.secs !== remote.secs){
+            S.kwh = remote.kwh; S.pct = remote.pct; S.secs = remote.secs;
+            changed = true;
+          }
+        }
+      }
+      if (changed) renderEverything();
+
+      const content = structuralContent();
+      const structuralChanged = content !== SYNC.lastKnownContent;
+      if (structuralChanged){
+        SYNC.lastKnownContent = content;
+        S._rev = Math.max(Date.now(), (S._rev || 0) + 1);
+      }
+      // manda de novo sempre que TEMOS o cronômetro real rodando (pra levar os
+      // números ao vivo pros outros) ou quando algo estrutural mudou de verdade
+      if (structuralChanged || S.timer){
+        fetch('/state', { method: 'POST', body: JSON.stringify(syncPayload()) }).catch(() => {});
+      }
+    }).catch(() => { SYNC.pulling = false; });
+  }
+  // marca o estado inicial como "já conhecido" antes de ligar o relógio de
+  // sincronização — sem isso, os dois celulares mandavam um "eco" do estado
+  // em branco assim que carregavam (a primeira comparação sempre bate
+  // diferente de null), e se uma ação real acontecesse bem nesse instante,
+  // esse eco podia chegar depois e apagar ela
+  SYNC.lastKnownContent = structuralContent();
+  setInterval(syncTick, 700);
+
+  /* ---------- mount both phones ---------- */
+  PHONES.forEach(p => { $(p + '-mount').innerHTML = phoneHTML(p); });
+
+  drawQR('qr-scan', 190);
+  drawQR('qr-box', 130);
+  drawQR('qr-newdevice', 190, 20260808);
+  renderPrice();
+  renderEarnings();
+  renderChargersList();
+  renderDeviceResult();
+  renderViability();
+  renderMapList();
+  renderSelectedCharger();
+  renderChargeTarget();
+
+  /* ---------- event delegation (CSP-safe: no inline handlers) ---------- */
+  function handleActivate(target){
+    const goEl = target.closest('[data-go]');
+    if (goEl){
+      go(goEl.dataset.go);
+      return true;
+    }
+    const scrEl = target.closest('[data-scr]');
+    if (scrEl){ go(scrEl.dataset.scr); return true; }
+    const actEl = target.closest('[data-action]');
+    if (actEl){
+      const phoneRoot = actEl.closest('.phone');
+      const p = phoneRoot ? phoneRoot.id : null;
+      switch (actEl.dataset.action){
+        case 'stepPrice': stepPrice(Number(actEl.dataset.dir)); break;
+        case 'stepTargetPct': stepTargetPct(Number(actEl.dataset.dir)); break;
+        case 'openBox': openBox(actEl.dataset.from); break;
+        case 'selPay': selPay(actEl); break;
+        case 'selectCharger': selectCharger(Number(actEl.dataset.idx), p); break;
+        case 'toggleChargerPub': toggleChargerPub(Number(actEl.dataset.idx)); break;
+        case 'startCharge': startCharge(p); break;
+        case 'beginHandshake': beginHandshake(); break;
+        case 'interruptCharge': interruptCharge(); break;
+        case 'resumeCharge': resumeCharge(); break;
+        case 'finishCharge': finishCharge(false, p); break;
+        case 'concludeReceipt': concludeReceipt(p); break;
+        case 'closeBox': closeBox(); break;
+        case 'rate': rate(Number(actEl.dataset.n)); break;
+        case 'lookupCep': lookupCep(p); break;
+        case 'stepQty': stepQty(Number(actEl.dataset.dir)); break;
+        case 'goScanDevice': goScanDevice(p); break;
+        case 'registerDevice': registerDevice(p); break;
+        case 'selManualModel': selManualModel(actEl, p); break;
+        case 'stepManualKw': stepManualKw(Number(actEl.dataset.dir)); break;
+        case 'confirmManualDevice': confirmManualDevice(p); break;
+        case 'stepHours': stepHours(Number(actEl.dataset.dir)); break;
+        case 'goViability': goViability(p); break;
+        case 'stepVagas': stepVagas(Number(actEl.dataset.dir)); break;
+        case 'toggleSource': toggleSource(actEl.dataset.src); break;
+        case 'stepSourcePanels': stepSourcePanels(actEl.dataset.src, Number(actEl.dataset.dir)); break;
+        case 'stepAlloc': stepAlloc(Number(actEl.dataset.dir)); break;
+        case 'stepTariff': stepTariff(Number(actEl.dataset.dir)); break;
+        case 'stepMargin': stepMargin(Number(actEl.dataset.dir)); break;
+        case 'applySuggestedPrice': applySuggestedPrice(p); break;
+      }
+      return true;
+    }
+    return false;
+  }
+  document.addEventListener('click', e => handleActivate(e.target));
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (e.target.closest('[data-go],[data-scr],[data-action]')) handleActivate(e.target);
+  });
+  document.addEventListener('change', e => {
+    if (e.target.classList.contains('pub-toggle')) togglePublic(e.target.checked);
+    if (e.target.classList.contains('suggested-price-input')) handleSuggestedPriceChange(e.target);
+  });
+  document.addEventListener('input', e => {
+    if (e.target.id && e.target.id.endsWith('-cep-input')){
+      e.target.value = formatCep(e.target.value);
+      if (e.target.value.replace(/\D/g, '').length === 8){
+        const phoneRoot = e.target.closest('.phone');
+        if (phoneRoot) lookupCep(phoneRoot.id);
+      }
+    }
+    if (e.target.classList.contains('target-money-input')) handleTargetMoneyInput(e.target);
+  });
+</script>
+)HTMLDELIM";
+
+#endif

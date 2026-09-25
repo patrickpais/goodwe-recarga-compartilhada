@@ -63,6 +63,12 @@ const unsigned long DEBOUNCE_MS = 40;  // ignora "tremidas" do contato por 40ms 
 
 const char* AP_SSID = "GoodWe-Demo";
 const char* AP_PASS = "goodwe123";   // mínimo 8 caracteres
+
+// Modo duplo: além de criar a rede GoodWe-Demo (plano B), o ESP32 também
+// ENTRA na rede do local da apresentação — assim o notebook fica com
+// internet (banca online) e ainda enxerga o carregador. As credenciais
+// ficam no wifi_local.h, que está fora do git (copie do .example.h).
+#include "wifi_local.h"
 // ----------------------------------------------------------------
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -219,12 +225,18 @@ void setup() {
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
+  WiFi.mode(WIFI_AP_STA);          // cria a GoodWe-Demo E entra na rede local
   WiFi.softAP(AP_SSID, AP_PASS);
+  WiFi.config(STA_IP, STA_GW, STA_MASK);
+  WiFi.begin(STA_SSID, STA_PASS);  // não bloqueia: a GoodWe-Demo funciona igual
   Serial.println();
   Serial.print("Rede criada: ");
   Serial.println(AP_SSID);
   Serial.print("Conecte seu notebook nela e acesse: http://");
   Serial.println(WiFi.softAPIP()); // normalmente 192.168.4.1
+  Serial.print("Tentando entrar tambem na rede '");
+  Serial.print(STA_SSID);
+  Serial.println("'...");
 
   server.on("/", handleRoot);
   server.on("/led", handleLed);
@@ -238,4 +250,12 @@ void loop() {
   server.handleClient();
   checkButton();
   if (mode != 0) applyColor(); // mantém a animação rodando mesmo sem requisições novas
+
+  // avisa (uma vez) quando conseguir entrar na rede local
+  static bool staAvisado = false;
+  if (!staAvisado && WiFi.status() == WL_CONNECTED) {
+    staAvisado = true;
+    Serial.print("Conectado na rede local! Acesse tambem por: http://");
+    Serial.println(WiFi.localIP());
+  }
 }

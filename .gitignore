@@ -3,3 +3,12 @@ ecc12366-5348-48c7-8f39-84367e91ee79.jpeg
 # CAD oficial da GoodWe (105MB, acima do limite de 100MB do GitHub) e STLs intermediarios
 modelo-3d/00-7kW-3D.stp
 modelo-3d/capa-extraida/
+
+# senha do Wi-Fi local da apresentacao (use o wifi_local.example.h como modelo)
+esp32-led-demo/wifi_local.h
+
+# Sprint 3: zips duplicam o conteudo ja versionado das pastas
+Sprint 3/**/*.zip
+Sprint 3/*.zip
+# repositorio git proprio de outra disciplina (tem historico separado)
+Sprint 3/DSA/ecoVolt/
