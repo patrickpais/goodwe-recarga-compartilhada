@@ -5720,6 +5720,15 @@ const HW_LED = {
   desligado:   { r: 0, g: 0, b: 0, mode: 0 },     // apagado (vaga desativada pelo gestor)
 };
 
+// estado de fábrica das vagas — o reset geral da demo (aperto longo no botão)
+// devolve a lista a este ponto, incluindo a Vaga 03 em falha para demonstrar
+const CHARGERS_INICIAIS = [
+  { id: 'c1', site: 'pn', nome: 'Vaga 01', evse: 'PN-EVSE-01', serie: 'GWH7-2841-BR', conector: 'Tipo 2 · 7 kW', status: 'carregando', kw: 6.8, min: 34, preco: 2.19, hoje: 12.4, total: 4812 },
+  { id: 'c2', site: 'pn', nome: 'Vaga 02', evse: 'PN-EVSE-02', serie: 'GWH7-2847-BR', conector: 'Tipo 2 · 7 kW', status: 'carregando', kw: 6.5, min: 52, preco: 2.19, hoje: 6.6, total: 3964 },
+  { id: 'c3', site: 'pn', nome: 'Vaga 03', evse: 'PN-EVSE-03', serie: 'GWH7-2853-BR', conector: 'Tipo 2 · 7 kW', status: 'falha', erro: 'Erro 2091 · sem resposta Modbus há 12 min', preco: 2.19, hoje: 0, total: 2107 },
+  { id: 'c4', site: 'pn', nome: 'Vaga 04', evse: 'PN-EVSE-04', serie: 'GWH7-2860-BR', conector: 'Tipo 2 · 7 kW', status: 'livre', preco: 2.19, hoje: 3.1, total: 1268 },
+];
+
 const QR_CELLS = (() => {
   const N = 25, cells = [];
   let seed = 20260912;
@@ -5765,12 +5774,7 @@ class Component extends DCLogic {
     sites: [
       { id: 'pn', nome: 'Galeria Pátio Norte', endereco: 'Av. Paulista, 1578 · Bela Vista, SP', kwp: '67,2 kWp instalados' },
     ],
-    chargers: [
-      { id: 'c1', site: 'pn', nome: 'Vaga 01', evse: 'PN-EVSE-01', serie: 'GWH7-2841-BR', conector: 'Tipo 2 · 7 kW', status: 'carregando', kw: 6.8, min: 34, preco: 2.19, hoje: 12.4, total: 4812 },
-      { id: 'c2', site: 'pn', nome: 'Vaga 02', evse: 'PN-EVSE-02', serie: 'GWH7-2847-BR', conector: 'Tipo 2 · 7 kW', status: 'carregando', kw: 6.5, min: 52, preco: 2.19, hoje: 6.6, total: 3964 },
-      { id: 'c3', site: 'pn', nome: 'Vaga 03', evse: 'PN-EVSE-03', serie: 'GWH7-2853-BR', conector: 'Tipo 2 · 7 kW', status: 'falha', erro: 'Erro 2091 · sem resposta Modbus há 12 min', preco: 2.19, hoje: 0, total: 2107 },
-      { id: 'c4', site: 'pn', nome: 'Vaga 04', evse: 'PN-EVSE-04', serie: 'GWH7-2860-BR', conector: 'Tipo 2 · 7 kW', status: 'livre', preco: 2.19, hoje: 3.1, total: 1268 },
-    ],
+    chargers: CHARGERS_INICIAIS.map(c => ({ ...c })),
     chat: [],
   };
 
@@ -5850,7 +5854,7 @@ class Component extends DCLogic {
 
   hwReset = () => {
     clearInterval(this._iv);
-    this.setState({ screen: 'role', role: null, logged: false, pendingRole: null, hasSolution: null, tab: 'inicio', sess: null, running: false, interrupted: false, plugged: false, receipt: null, stars: 0, spotId: 's1', mapFilter: 'Todos', histFilter: 'Tudo', goal: 80, method: 'pix', cep: '', addr: null, modelo: null });
+    this.setState({ screen: 'role', role: null, logged: false, pendingRole: null, hasSolution: null, tab: 'inicio', sess: null, running: false, interrupted: false, plugged: false, receipt: null, stars: 0, spotId: 's1', mapFilter: 'Todos', histFilter: 'Tudo', goal: 80, method: 'pix', cep: '', addr: null, modelo: null, chargers: CHARGERS_INICIAIS.map(c => ({ ...c })) });
     this._hwLast = null;
     this.hwSet('disponivel');
   };
