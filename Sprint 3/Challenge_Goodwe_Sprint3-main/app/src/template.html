@@ -1,34 +1,6 @@
 <div data-root="wrap" style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start;padding:36px 34px 64px;box-sizing:border-box">
 
-<div data-side="notes" style="flex:1 1 280px;min-width:260px;max-width:340px;display:flex;flex-direction:column;gap:20px">
-<div style="display:flex;flex-direction:column;gap:7px">
-<span style="font:800 10.5px/1 Nunito,ui-rounded,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#9aa1ad">Protótipo · Android &amp; iOS</span>
-<h1 style="margin:0;font:900 34px/1.05 Nunito,ui-rounded,sans-serif;color:#e8eaef;letter-spacing:-.02em">ChargeGrid<br>Intelligence</h1>
-<p style="margin:0;font:600 14px/1.55 Nunito,ui-rounded,sans-serif;color:#9aa1ad;text-wrap:pretty">App único, papel escolhido antes do login: o motorista encontra, pluga e paga; o gestor controla demanda, tarifa e repasse. Identidade do goodwe-mobile.html, estrutura da opção A com a barra ao vivo da C.</p>
-</div>
-<div style="display:flex;flex-direction:column;gap:9px;padding:17px;border:1px solid #333a48;border-radius:18px;background:rgba(255,255,255,.03)">
-<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-<span style="font:800 10.5px/1 Nunito,ui-rounded,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#9aa1ad">Roteiro de teste</span>
-<button sc-camel-on-click="{{ resetDemo }}" style="padding:7px 12px;border-radius:99px;border:1.5px solid #f5333f;background:transparent;color:#e8eaef;font:800 11px/1 Nunito,ui-rounded,sans-serif;cursor:pointer;flex:none" style-hover="background:#f5333f;color:#fff">↺ Reiniciar demo</button>
-</div>
-<ol style="margin:0;padding-left:18px;font:600 13px/1.65 Nunito,ui-rounded,sans-serif;color:#c9ced8">
-<li>Escolha <b>Motorista</b>, faça o login → toque um ponto no mapa → <b>Ir até lá</b> ou <b>Ler QR Code</b>.</li>
-<li>Ajuste a meta de bateria: a estimativa de tempo e valor muda e a tarifa trava no plug-in.</li>
-<li>Inicie: a sessão corre acelerada. Encerre e veja a captura só dos kWh entregues.</li>
-<li>No Perfil (ícone PP), troque para <b>Gestor</b>: tarifa base + fator α, hierarquia de despacho, Síndico Virtual e simulador de vagas.</li>
-</ol>
-</div>
-<div style="display:flex;flex-direction:column;gap:9px;padding:17px;border:1px solid #333a48;border-radius:18px;background:rgba(255,255,255,.03)">
-<span style="font:800 10.5px/1 Nunito,ui-rounded,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#9aa1ad">Decisões de projeto</span>
-<ul style="margin:0;padding-left:18px;font:600 13px/1.6 Nunito,ui-rounded,sans-serif;color:#c9ced8">
-<li>Cores de status = LEDs do hardware: verde carregando, azul disponível, vermelho falha.</li>
-<li>IA discreta para o motorista — só o preço final; o gestor vê os fatores.</li>
-<li>Gestor tem 8 assuntos: 4 nas abas, o resto em <b>Mais</b> como grade de serviços.</li>
-</ul>
-</div>
-</div>
-
-<div style="flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="flex:1 1 auto;display:flex;flex-direction:column;gap:12px;align-items:center">
 <div data-shell="phone" style="width:392px;height:800px;position:relative;background: {{ shellBg }};border-radius:52px;border:10px solid #0b0d12;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)">
 <div data-notch="" style="position:absolute;top:9px;left:50%;transform:translateX(-50%);width:118px;height:28px;background:#0b0d12;border-radius:20px;z-index:41"></div>
 <div style="position:absolute;top:18px;left:0;right:0;z-index:40;display:flex;justify-content:space-between;padding:0 30px;font:800 13px/1 Nunito,ui-rounded,sans-serif;color: {{ statusInk }};pointer-events:none">
