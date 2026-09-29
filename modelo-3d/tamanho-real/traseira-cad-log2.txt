@@ -1,0 +1,26 @@
+Abrindo STEP...
+KETI-1216 encontrados: 1
+bbox local: X[16.2,224.8] Y[-7.3,87.8] Z[-474.1,-23.8] vol=536 cm3
+  faixa Z-475 pulada (estreita)
+  faixa Z-450 pulada (estreita)
+  faixa Z[-426,-400] X[51.5,189.1] Y[-3.3,78.2]
+  faixa Z[-400,-374] X[50.9,190.1] Y[-3.3,76.3]
+  faixa Z[-376,-350] X[52.6,188.9] Y[-3.3,69.7]
+  faixa Z[-350,-324] X[52.4,188.5] Y[-3.3,63.6]
+  faixa Z[-326,-300] X[50.8,189.9] Y[-3.3,64.7]
+  faixa Z[-300,-274] X[48.8,193.5] Y[-3.3,64.7]
+  faixa Z[-276,-250] X[44.5,196.5] Y[-3.3,59.1]
+  faixa Z[-250,-224] X[42.4,198.6] Y[-3.3,59.1]
+  faixa Z[-226,-200] X[40.3,200.7] Y[-3.3,61.2]
+  faixa Z[-200,-174] X[35.2,205.0] Y[-3.3,59.7]
+  faixa Z[-176,-150] X[31.9,208.8] Y[-3.3,59.7]
+  faixa Z[-150,-124] X[22.3,218.7] Y[-3.3,61.2]
+  faixa Z[-126,-100] X[22.8,218.3] Y[-3.3,63.0]
+  faixa Z[-100,-74] X[28.6,213.0] Y[-3.3,64.7]
+  faixa Z[-76,-50] X[31.7,208.7] Y[-3.3,59.7]
+  faixa Z[-50,-30] X[38.2,201.8] Y[-3.3,59.7]
+cavidade com 16 faixas, escavando...
+vol antes=536 depois=353 cm3 (removido 34%)
+traseira-so-carcaca.stl: 36648 tris, solida=False
+traseira-real-oca.stl: 19056 tris, solida=False
+FIM
