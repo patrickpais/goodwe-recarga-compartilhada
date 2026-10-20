@@ -18,15 +18,18 @@
 
   Endpoint da fita:   GET /led?r=0&g=0&b=255&mode=0
 
-  Já o botão físico simula o plugue sendo conectado/desconectado do carro.
-  O ESP32 detecta o clique (com debounce) e guarda um "evento pendente";
-  o navegador pergunta a cada ~400ms se houve clique novo, e o evento é
-  apagado assim que é lido — assim nenhum clique se perde nem se repete.
+  O plugue agora é um CONECTOR de verdade (Steck N3006/N3076): a mangueira
+  do carregador termina na fêmea (2 fios: GPIO + GND) e o macho fica fixo no
+  "carro", com jumper entre os pinos — conectar fecha o circuito. O ESP32
+  detecta cada transição (com debounce) e guarda um "evento pendente"; o
+  navegador pergunta a cada ~400ms, e o evento é apagado assim que é lido —
+  nenhuma conexão se perde nem se repete. Há ainda um botão interno opcional
+  de reset (segurar 1,5s).
 
-  Endpoint do botão:  GET /button   -> {"event":1,"long":0}
-                       event=1: clique curto desde a última leitura (plugue)
-                       long=1:  aperto de 1,5s+ (reset geral da demonstração —
-                                limpa sessões penduradas, tudo volta ao início)
+  Endpoint do botão:  GET /button   -> {"event":1,"long":0,"plugged":1}
+                       event=1:   o plugue conectou OU desconectou desde a última leitura
+                       long=1:    botão interno segurado 1,5s+ (reset geral da demonstração)
+                       plugged=1: estado atual do conector (informativo)
 
   O ESP32 também serve o próprio app (arquivo web_content.h, gerado a partir
   de goodwe-mobile.html) em http://192.168.4.1/ — é só conectar o celular
@@ -57,9 +60,20 @@
                             // que nao existe; se for menor, sobram LEDs apagados
 #define BRIGHTNESS  255    // 0-255, limite geral de brilho
 
-#define BUTTON_PIN  4      // GPIO ligado a uma perna do botão; a outra perna vai direto no GND
+// O "plugue" agora é um CONECTOR de verdade (Steck): a mangueira do carregador
+// termina na FÊMEA com 2 fios (GPIO + GND), e o MACHO fica embutido no "carro"
+// com um jumper entre os dois pinos correspondentes. Conectado = circuito
+// fechado = pino em GND. Cada transição (conectar/desconectar) vira um evento
+// pro app — que já trata na ordem certa: plugar, interromper, retomar, encerrar.
+#define PLUG_PIN    4      // GPIO ligado a um fio da fêmea; o outro fio vai no GND
                             // (usa o pull-up interno do ESP32, não precisa de resistor)
-const unsigned long DEBOUNCE_MS = 40;  // ignora "tremidas" do contato por 40ms após um clique
+
+// Botão interno OPCIONAL de reset da demo (segurar 1,5s). Se não for montado,
+// pode deixar sem nada no pino — o pull-up mantém em repouso. O reset também
+// funciona recarregando a página do app.
+#define RESET_PIN   15
+
+const unsigned long DEBOUNCE_MS = 60;  // ignora "tremidas" do contato (conector encaixando)
 
 const char* AP_SSID = "GoodWe-Demo";
 const char* AP_PASS = "goodwe123";   // mínimo 8 caracteres
@@ -79,12 +93,18 @@ int fillPct = 0; // usado só no mode=3 (enchendo)
 
 String sharedState = ""; // "quadro compartilhado": último estado que algum celular mandou
 
-bool lastRawReading = HIGH;         // última leitura bruta do pino (pode "tremer")
-bool stableState = HIGH;            // estado já confirmado como estável (HIGH = solto, LOW = pressionado)
-unsigned long lastDebounceTime = 0;
-unsigned long pressStartedAt = 0;   // quando o aperto atual começou
-bool buttonEventPending = false;      // clique CURTO pendente (plugue conecta/desconecta)
-bool buttonLongEventPending = false;  // aperto LONGO pendente (>=1,5s: reset geral da demo)
+// --- conector (plugue): chave de ESTADO, não clique ---
+bool plugRawReading = HIGH;         // última leitura bruta (pode "tremer" no encaixe)
+bool plugStableState = HIGH;        // estado confirmado (HIGH = desconectado, LOW = conectado)
+unsigned long plugDebounceTime = 0;
+bool buttonEventPending = false;    // transição pendente (conectou OU desconectou) — consumida na leitura
+
+// --- botão interno opcional de reset (clique longo de 1,5s) ---
+bool resetRawReading = HIGH;
+bool resetStableState = HIGH;
+unsigned long resetDebounceTime = 0;
+unsigned long resetPressStartedAt = 0;
+bool buttonLongEventPending = false;  // reset geral da demo pendente
 const unsigned long LONGPRESS_MS = 1500;
 
 // modo de animação da fita:
@@ -179,29 +199,39 @@ void handleStatePost() {
   server.send(200, "text/plain", "ok");
 }
 
-// roda em todo loop() — o evento é decidido ao SOLTAR o botão, pra dar
-// pra diferenciar clique curto (plugue) de aperto longo (reset da demo)
-void checkButton() {
-  bool reading = digitalRead(BUTTON_PIN);
-  if (reading != lastRawReading) {
-    lastDebounceTime = millis();   // o pino mudou agora — reinicia a contagem de estabilidade
-    lastRawReading = reading;
+// roda em todo loop() — o conector é uma CHAVE: conectado = LOW, solto = HIGH.
+// Cada mudança estável de estado gera UM evento pro app (que já interpreta a
+// sequência: plugar -> liberar -> desconectar interrompe -> reconectar retoma).
+void checkPlug() {
+  bool reading = digitalRead(PLUG_PIN);
+  if (reading != plugRawReading) {
+    plugDebounceTime = millis();   // o pino mudou agora — reinicia a contagem de estabilidade
+    plugRawReading = reading;
   }
-  if (millis() - lastDebounceTime > DEBOUNCE_MS) {
-    // a leitura ficou parada (sem "tremer") por tempo suficiente: é real
-    if (reading != stableState) {
-      stableState = reading;
-      if (stableState == LOW) {
-        pressStartedAt = millis();          // começou a apertar — só marca a hora
-      } else {
-        // soltou: decide se foi curto ou longo
-        if (millis() - pressStartedAt >= LONGPRESS_MS) {
-          buttonLongEventPending = true;
-          Serial.println("Botao: aperto LONGO (reset da demo)");
-        } else {
-          buttonEventPending = true;
-          Serial.println("Botao: clique curto (plugue)");
-        }
+  if (millis() - plugDebounceTime > DEBOUNCE_MS) {
+    if (reading != plugStableState) {
+      plugStableState = reading;
+      buttonEventPending = true;
+      Serial.println(plugStableState == LOW ? "Plugue: CONECTADO" : "Plugue: DESCONECTADO");
+    }
+  }
+}
+
+// botão interno opcional: segurar 1,5s+ e soltar = reset geral da demo
+void checkResetButton() {
+  bool reading = digitalRead(RESET_PIN);
+  if (reading != resetRawReading) {
+    resetDebounceTime = millis();
+    resetRawReading = reading;
+  }
+  if (millis() - resetDebounceTime > DEBOUNCE_MS) {
+    if (reading != resetStableState) {
+      resetStableState = reading;
+      if (resetStableState == LOW) {
+        resetPressStartedAt = millis();
+      } else if (millis() - resetPressStartedAt >= LONGPRESS_MS) {
+        buttonLongEventPending = true;
+        Serial.println("Botao interno: RESET da demo");
       }
     }
   }
@@ -210,7 +240,8 @@ void checkButton() {
 void handleButton() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   String json = String("{\"event\":") + (buttonEventPending ? "1" : "0")
-              + ",\"long\":" + (buttonLongEventPending ? "1" : "0") + "}";
+              + ",\"long\":" + (buttonLongEventPending ? "1" : "0")
+              + ",\"plugged\":" + (plugStableState == LOW ? "1" : "0") + "}";
   buttonEventPending = false;     // consome os eventos — cada um só é reportado uma vez
   buttonLongEventPending = false;
   server.send(200, "application/json", json);
@@ -223,7 +254,8 @@ void setup() {
   strip.setBrightness(BRIGHTNESS);
   strip.show(); // tudo apagado no início
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(PLUG_PIN, INPUT_PULLUP);
+  pinMode(RESET_PIN, INPUT_PULLUP);
 
   WiFi.mode(WIFI_AP_STA);          // cria a GoodWe-Demo E entra na rede local
   WiFi.softAP(AP_SSID, AP_PASS);
@@ -248,7 +280,8 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  checkButton();
+  checkPlug();
+  checkResetButton();
   if (mode != 0) applyColor(); // mantém a animação rodando mesmo sem requisições novas
 
   // avisa (uma vez) quando conseguir entrar na rede local
