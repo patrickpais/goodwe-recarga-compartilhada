@@ -10,7 +10,7 @@ const KW = 6.8;
 // O carregador pode estar em dois lugares: na rede que ele mesmo cria
 // (GoodWe-Demo) ou dentro da rede local da apresentação (modo duplo do
 // firmware, com IP fixo). O app testa os dois e usa o que responder.
-const HW_URLS = ['http://192.168.4.1', 'http://192.168.15.222'];
+const HW_URLS = ['http://192.168.4.1', 'http://192.168.15.222', 'http://192.168.0.222'];
 const HW_LED = {
   disponivel:  { r: 0, g: 0, b: 255, mode: 0 },   // azul parado
   conectado:   { r: 255, g: 160, b: 0, mode: 1 }, // âmbar respirando (plugue no carro, aguardando liberar)
