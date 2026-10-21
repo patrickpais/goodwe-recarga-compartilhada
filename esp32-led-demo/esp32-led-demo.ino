@@ -54,7 +54,7 @@
 
 // ---------------- ajuste conforme sua montagem ----------------
 #define LED_PIN     5      // GPIO ligado ao fio DIN (dados) da fita
-#define NUM_LEDS    6      // quantos LEDs de fato estao colados atras do W vazado
+#define NUM_LEDS    23     // quantos LEDs de fato estao colados atras do W vazado (capa tamanho real)
                             // IMPORTANTE: ajuste pro numero REAL do pedaco cortado —
                             // se for maior que o real, as animacoes "somem" no trecho
                             // que nao existe; se for menor, sobram LEDs apagados
@@ -126,8 +126,8 @@ void applyChase() {
   // giro continuo pelo W enquanto carrega — calibrado pra fita curta (~8 LEDs):
   // 12 LEDs/s = ~1,5 voltas por segundo, rapido o bastante pra parecer "girando"
   // sem virar um borrao. Ajuste fino: speed maior = gira mais rapido.
-  const float speed = 12.0;  // LEDs por segundo
-  const float trail = 2.2;   // "comprimento" do rastro em LEDs — aumente pra ficar mais suave/longo
+  const float speed = 34.0;  // LEDs por segundo (~1,5 voltas/s na fita de 23 LEDs do W grande)
+  const float trail = 6.5;   // "comprimento" do rastro em LEDs — aumente pra ficar mais suave/longo
 
   float headPos = fmod(millis() * speed / 1000.0, NUM_LEDS);
 
