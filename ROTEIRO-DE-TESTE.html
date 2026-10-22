@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Roteiro de Teste — Versão Teste 1.0</title>
+<style>
+  body{font-family:ui-rounded,-apple-system,sans-serif;max-width:780px;margin:24px auto;padding:0 16px;color:#131c2e;background:#fafafb}
+  h1{font-size:22px;margin-bottom:2px} h2{font-size:16px;margin:26px 0 8px;padding:6px 10px;border-radius:8px;background:#131c2e;color:#fff}
+  .sub{color:#7c8494;font-size:13px;margin-bottom:14px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td,th{border:1px solid #e4e5e9;padding:7px 9px;vertical-align:top;text-align:left;background:#fff}
+  th{background:#eceef2;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  td:first-child{width:30px;text-align:center}
+  input[type=checkbox]{transform:scale(1.3)}
+  .atencao{background:#faeed3;border:1px solid #f2d69a;border-radius:10px;padding:10px 13px;font-size:13.5px;margin:10px 0}
+  .ok{color:#149d68;font-weight:700} .cor{font-weight:700}
+  .azul{color:#2563eb}.ambar{color:#b97a08}.verde{color:#149d68}.verm{color:#dc2626}
+</style>
+</head>
+<body>
+<h1>Roteiro de Teste — Versão Teste 1.0 (Sprint 4)</h1>
+<p class="sub">Banca 22/10 · Se TODOS os itens do Bloco A passarem e nada do B–D quebrar feio, a Teste vai pra banca. Qualquer dúvida: <b>Oficial 1.0</b> (Desktop/Goodwe) sem remorso.</p>
+
+<div class="atencao">⚙️ <b>Preparo:</b> carregador no power bank, botão ON · Mac na rede <b>GoodWe-Demo</b> (goodwe123) · abrir <b>Goodwe-versao-teste/app/dist/ChargeGrid-app.html</b> (2 cliques) · F5 zera tudo entre testes.</div>
+
+<h2>Bloco A — Conector + ciclo físico (DECISIVO: 10/10 ou volta pra Oficial)</h2>
+<table>
+<tr><th></th><th>Ação</th><th>Resultado esperado</th></tr>
+<tr><td><input type="checkbox"></td><td>A1. Abrir o app (cabo desencaixado)</td><td>LED <span class="cor azul">AZUL</span> em até ~5 s</td></tr>
+<tr><td><input type="checkbox"></td><td>A2. Encaixar o conector Steck</td><td>LED <span class="cor ambar">ÂMBAR</span> respirando + toast "Plugue conectado"</td></tr>
+<tr><td><input type="checkbox"></td><td>A3. Motorista → login → "Já estou no eletroposto" → kWh → Continuar → <b>desencaixar</b> → tocar "Pagar e liberar carga"</td><td>⚠️ ITEM DE ATENÇÃO: deve avisar pra conectar o cabo e NÃO iniciar. Observar se o pagamento não fica num estado estranho. Se ficar, anotar (na banca: sempre encaixar antes de pagar)</td></tr>
+<tr><td><input type="checkbox"></td><td>A4. Encaixar → "Pagar e liberar carga" (Pix)</td><td>QR Code aparece → aprova sozinho em ~2 s → LED <span class="cor verde">VERDE girando</span> nos 18 LEDs, tela ao vivo subindo</td></tr>
+<tr><td><input type="checkbox"></td><td>A5. Desencaixar NO MEIO da carga</td><td>LED <span class="cor verm">VERMELHO</span> respirando + banner "Carregamento interrompido" + cobrança pausada</td></tr>
+<tr><td><input type="checkbox"></td><td>A6. Reencaixar</td><td>Volta ao <span class="cor verde">VERDE</span>, carga continua de onde parou</td></tr>
+<tr><td><input type="checkbox"></td><td>A7. Deixar terminar (~10 s) com o cabo DENTRO</td><td>LED <span class="cor ambar">ÂMBAR</span> (não azul!) + "meta atingida" na tela</td></tr>
+<tr><td><input type="checkbox"></td><td>A8. Desencaixar</td><td>LED <span class="cor azul">AZUL</span> + recibo: kWh entregues, <b>"capturada · Mercado Pago (sandbox)"</b>, split Galeria 90% / GoodWe 10%</td></tr>
+<tr><td><input type="checkbox"></td><td>A9. F5 com o cabo ENCAIXADO</td><td>App reinicia; em ~1–2 s o LED corrige sozinho pra <span class="cor ambar">ÂMBAR</span> (sincronização com o estado real do conector)</td></tr>
+<tr><td><input type="checkbox"></td><td>A10. F5 com cabo FORA</td><td>LED <span class="cor azul">AZUL</span> estável</td></tr>
+</table>
+
+<h2>Bloco B — Pagamentos novos (sandbox, sem internet)</h2>
+<table>
+<tr><th></th><th>Ação</th><th>Resultado esperado</th></tr>
+<tr><td><input type="checkbox"></td><td>B1. Ciclo com <b>cartão (Visa •••• 4417)</b></td><td>Pré-autoriza na liberação; no recibo, captura PARCIAL só do valor entregue (encerre antes da meta pra ver)</td></tr>
+<tr><td><input type="checkbox"></td><td>B2. Ciclo com <b>créditos da carteira</b></td><td>Saldo (R$ 48,20) diminui do valor cobrado no recibo</td></tr>
+<tr><td><input type="checkbox"></td><td>B3. "Ver no histórico" após um recibo</td><td>Recarga aparece no histórico com valor e local</td></tr>
+</table>
+
+<h2>Bloco C — Inteligência nova (ML + IA)</h2>
+<table>
+<tr><th></th><th>Ação</th><th>Resultado esperado</th></tr>
+<tr><td><input type="checkbox"></td><td>C1. Gestor → Acesse o ChargeGrid → card <b>Previsão</b></td><td>Calendário de 7 dias; galeria ~250 kWh e eletroposto ~40 kWh; perfil do dia (K-Means) com recomendação; trocar o dia muda os números</td></tr>
+<tr><td><input type="checkbox"></td><td>C2. Síndico Virtual / alertas</td><td>Alertas citam a previsão (ex.: pico previsto) com justificativa legível</td></tr>
+<tr><td><input type="checkbox"></td><td>C3. Assistente IA (ícone de chat) → perguntar "quanto vou gastar pra carregar 20 kWh?"</td><td>Resposta simulada coerente, sem erro (modo sandbox, offline)</td></tr>
+</table>
+
+<h2>Bloco D — Regressão do Gestor (o que já funcionava)</h2>
+<table>
+<tr><th></th><th>Ação</th><th>Resultado esperado</th></tr>
+<tr><td><input type="checkbox"></td><td>D1. Vagas: Reiniciar remoto da Vaga 03 (falha)</td><td>Vira disponível, toast OCPP</td></tr>
+<tr><td><input type="checkbox"></td><td>D2. Desativar Vaga 04</td><td>LED do poste <b>APAGA</b>; Ativar → <span class="cor azul">AZUL</span></td></tr>
+<tr><td><input type="checkbox"></td><td>D3. Cadastrar vaga por QR Code</td><td>Vaga 05 criada, disponível na lista</td></tr>
+<tr><td><input type="checkbox"></td><td>D4. Gestor prospect → simulador de viabilidade</td><td>Simulação roda com os campos novos (irradiação SP, carport)</td></tr>
+</table>
+
+<h2>Bloco E — Resiliência e dispositivos</h2>
+<table>
+<tr><th></th><th>Ação</th><th>Resultado esperado</th></tr>
+<tr><td><input type="checkbox"></td><td>E1. Desligar o carregador (botão OFF) → F5 no app</td><td>App funciona 100% só na tela; "Pagar e liberar" funciona SEM exigir plugue (fallback sem hardware)</td></tr>
+<tr><td><input type="checkbox"></td><td>E2. Religar o carregador com o app aberto</td><td>Em até ~5 s o LED acende na cor certa sozinho (reconexão automática)</td></tr>
+<tr><td><input type="checkbox"></td><td>E3. iPad/celular na GoodWe-Demo via servidor do Mac (porta 8123, pasta Goodwe-versao-teste/app)</td><td>App carrega e o ciclo A2–A8 funciona igual pelo iPad</td></tr>
+</table>
+
+<div class="atencao">📋 <b>Critério final:</b> Bloco A 10/10 = Teste 1.0 vai pra banca. Falhou algo no A = Oficial 1.0 (Desktop/Goodwe), que já está validada. Falhas nos blocos B–E: anotar e me contar — pode ser contornável na fala sem trocar de versão.</div>
+</body>
+</html>

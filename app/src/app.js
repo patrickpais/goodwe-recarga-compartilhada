@@ -10,7 +10,7 @@ const KW = 6.8;
 // O carregador pode estar em dois lugares: na rede que ele mesmo cria
 // (GoodWe-Demo) ou dentro da rede local da apresentação (modo duplo do
 // firmware, com IP fixo). O app testa os dois e usa o que responder.
-const HW_URLS = ['http://192.168.4.1', 'http://192.168.15.222'];
+const HW_URLS = ['http://192.168.4.1', 'http://192.168.15.222', 'http://192.168.0.222'];
 const HW_LED = {
   disponivel:  { r: 0, g: 0, b: 255, mode: 0 },   // azul parado
   conectado:   { r: 255, g: 160, b: 0, mode: 1 }, // âmbar respirando (plugue no carro, aguardando liberar)
@@ -120,6 +120,10 @@ class Component extends DCLogic {
       .catch(() => { /* ESP32 fora do alcance — a demo segue só na tela */ });
   };
 
+  // cor de "repouso": azul só quando o cabo está FORA; com o cabo encaixado
+  // (mesmo depois da recarga concluída) a vaga está ocupada — âmbar
+  hwIdle = (plugged) => this.hwSet((plugged !== undefined ? plugged : this.state.plugged) ? 'conectado' : 'disponivel');
+
   // clique curto no botão físico = plugue: conecta o cabo (âmbar, aguardando o
   // app liberar a carga), desconecta no meio da carga (interrompe), reconecta
   // (retoma) ou, com a meta atingida, encerra. Aperto de 1,5s+ = reset geral.
@@ -133,11 +137,24 @@ class Component extends DCLogic {
     fetch(this._hwUrl + '/button').then(r => r.json()).then(d => {
       if (!d) return;
       if (d.long) { this.hwReset(); return; }
-      if (!d.event) return;
+      if (!d.event) {
+        // sem evento novo: só corrige um eventual dessincronismo com o estado
+        // REAL do conector que o firmware reporta (ex.: recarga encerrada pela
+        // tela com o cabo ainda encaixado)
+        if (typeof d.plugged !== 'undefined' && !!d.plugged !== this.state.plugged) {
+          this.setState({ plugged: !!d.plugged }, () => {
+            if (!this.state.sess && !this.state.running) this.hwIdle();
+          });
+        }
+        return;
+      }
+      // estado do conector APÓS este evento (o firmware reporta; sem o campo,
+      // trata como alternância)
+      const pluggedNow = (typeof d.plugged !== 'undefined') ? !!d.plugged : !this.state.plugged;
       if (this.state.running) this.interruptSession();
       else if (this.state.interrupted) this.resumeSession();
-      else if (this.state.sess) this.finishSession();
-      else if (!this.state.plugged) this.plugIn();
+      else if (this.state.sess) this.finishSession(pluggedNow);
+      else if (pluggedNow) this.plugIn();
       else this.plugOut();
     }).catch(() => { /* silencioso, como o hwSet */ });
   };
@@ -1114,7 +1131,7 @@ class Component extends DCLogic {
       const done = kwh >= p.sess.metaKwh - 0.001;
       if (done) clearInterval(this._iv);
       return { sess: { ...p.sess, kwh, elapsed }, running: !done };
-    }, () => { if (!this.state.running) this.hwSet('disponivel'); });
+    }, () => { if (!this.state.running) this.hwIdle(); });  // meta atingida com cabo encaixado = âmbar
   };
 
   // endpoint da Edge Function supabase/functions/pagamentos (modo "api")
@@ -1195,18 +1212,21 @@ class Component extends DCLogic {
     this.hwSet('carregando');
   };
 
-  finishSession = () => {
+  // pluggedNow: estado do cabo APÓS o encerramento (false quando veio do
+  // desencaixe físico; sem argumento — botão da tela — o cabo segue como está)
+  finishSession = (pluggedNow) => {
     clearInterval(this._iv);
     const s = this.state.sess;
     if (!s) return;
     const total = s.kwh * s.tarifa;
     const pago = this.state.method === 'creditos';
+    const plugged = (typeof pluggedNow === 'boolean') ? pluggedNow : this.state.plugged;
     this.setState(p => ({
       receipt: { kwh: s.kwh, tarifa: s.tarifa, total, elapsed: s.elapsed, preauth: s.preauth, metodo: p.method, spot: s.spot, pagId: s.pagId, captura: 'processando' },
-      sess: null, running: false, interrupted: false, plugged: false, screen: 'receipt',
+      sess: null, running: false, interrupted: false, plugged, screen: 'receipt',
       saldo: pago ? Math.max(0, p.saldo - total) : p.saldo,
     }));
-    this.hwSet('disponivel');
+    this.hwIdle(plugged);  // cabo ainda encaixado = âmbar; cabo fora = azul
     // captura só os kWh entregues (cartão: captura parcial; Pix: estorna a sobra)
     if (s.pagId) {
       Pagamentos.capturar({ id: s.pagId, valor_final: total })

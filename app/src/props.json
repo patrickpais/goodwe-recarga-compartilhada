@@ -59,7 +59,7 @@
       "sandbox",
       "api"
     ],
-    "default": "api",
+    "default": "sandbox",
     "tsType": "string",
     "section": "Pagamento"
   },
@@ -69,7 +69,7 @@
       "sandbox",
       "api"
     ],
-    "default": "api",
+    "default": "sandbox",
     "tsType": "string",
     "section": "Assistente IA"
   }
