@@ -291,4 +291,14 @@ void loop() {
     Serial.print("Conectado na rede local! Acesse tambem por: http://");
     Serial.println(WiFi.localIP());
   }
+
+  // se a rede local nao existir (banca, NEXT), desiste depois de 30s:
+  // a busca continua da STA trava o radio e deixa a GoodWe-Demo lenta
+  static bool staDesistiu = false;
+  if (!staAvisado && !staDesistiu && millis() > 30000) {
+    staDesistiu = true;
+    WiFi.disconnect(true);   // desliga o lado STA (para de varrer canais)
+    WiFi.mode(WIFI_AP);      // AP puro: GoodWe-Demo estavel
+    Serial.println("Rede local nao encontrada em 30s: seguindo so com a GoodWe-Demo");
+  }
 }
