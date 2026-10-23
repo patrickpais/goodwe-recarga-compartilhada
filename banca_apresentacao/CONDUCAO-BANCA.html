@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Condução da Banca — ChargeGrid (5 min)</title>
+<style>
+  body{font-family:ui-rounded,-apple-system,sans-serif;max-width:800px;margin:24px auto;padding:0 16px;color:#131c2e;background:#fafafb}
+  h1{font-size:21px;margin-bottom:2px} .sub{color:#7c8494;font-size:13px;margin-bottom:16px}
+  .bloco{background:#fff;border:1px solid #e4e5e9;border-radius:14px;padding:14px 16px;margin:12px 0}
+  .tempo{display:inline-block;background:#131c2e;color:#fff;border-radius:99px;padding:3px 11px;font-size:12px;font-weight:800;margin-right:8px}
+  .tela{display:inline-block;background:#fdeaec;color:#a3111c;border-radius:99px;padding:3px 11px;font-size:12px;font-weight:800}
+  .fala{font-size:14.5px;line-height:1.55;margin:10px 0 6px;padding-left:12px;border-left:3px solid #149d68}
+  .acao{font-size:12.5px;color:#7a5406;background:#faeed3;border-radius:8px;padding:6px 10px;margin-top:6px}
+  .atencao{background:#fdeaec;border:1px solid #f2c6ca;border-radius:10px;padding:10px 13px;font-size:13.5px;margin:14px 0;color:#a3111c}
+  .ok{background:#dcf3ea;border:1px solid #b5e0cd;border-radius:10px;padding:10px 13px;font-size:13.5px;margin:14px 0;color:#0f5c3f}
+</style>
+</head>
+<body>
+<h1>Condução da Banca — 5 minutos · slides + protótipo + iPad</h1>
+<p class="sub">22/10 · sala 901 · Versão Oficial 2.0 · SIMULTÂNEO: slides sempre no telão; a demo vive no protótipo e no iPad. Papéis: <b>Patrick narra</b> · A nos slides · B no conector · C com o iPad (aproxima da banca nos momentos-chave)</p>
+
+<div class="ok">🎧 O áudio <b>falas-banca.m4a</b> (4:38) é esta fala completa — escute no caminho e ensaie por cima.</div>
+
+<div class="bloco"><span class="tempo">0:00–0:35</span><span class="tela">SLIDE 1 · capa</span>
+<p class="fala">Boa noite, professores. Nós somos a Ecovolts, e eu sou o Patrick, Scrum Master da equipe. Estamos vivendo uma transformação energética — e o ChargeGrid Intelligence leva essa transformação para as galerias comerciais. A galeria passa a gerar energia no telhado, na fachada e no carport, e o gestor ganha duas vezes com o mesmo sol: vende recarga para carros elétricos, ficando com 90% da receita, e abate a própria conta de luz com o que sobra. O motorista encontra recarga onde já está — e quem carrega, fica mais tempo na galeria, consumindo. <b>O sol vira o novo sócio do gestor.</b></p>
+</div>
+
+<div class="bloco"><span class="tempo">0:35–0:55</span><span class="tela">SLIDE 2 · arquitetura</span>
+<p class="fala">A arquitetura: painéis, fachada e carport geram para o inversor GoodWe, e o medidor inteligente lê tudo antes da concessionária. Daí pra cima, o Supabase é a fonte única de verdade: carregador, inteligência e app só falam com o banco. O que está em verde roda hoje; o que está em vermelho — SEMS e OCPP — é a integração alvo.</p>
+</div>
+
+<div class="bloco"><span class="tempo">0:55–1:10</span><span class="tela">SLIDE 3 · fluxo/stack</span>
+<p class="fala">E aqui o caminho dos dados com a stack: do ESP32 ao app, cada fluxo com sua linguagem. Hoje funcionam a demonstração física, o mapa, a previsão com machine learning, o assistente e o pagamento.</p>
+</div>
+
+<div class="bloco"><span class="tempo">1:10–1:25</span><span class="tela">SLIDE 4 · personas</span>
+<p class="fala">Três personas, um app: motorista, gestor, e o prospect que avalia antes de instalar. E vocês vão ver isso funcionando agora: no telão, o mapa da jornada — <b>e aqui na mesa, ela acontecendo de verdade.</b></p>
+<div class="acao">🖥 A: avança pro SLIDE 5 (fica no telão durante a demo) · B: posição no conector · C: iPad com o app pronto, perto da banca</div>
+</div>
+
+<div class="bloco"><span class="tempo">1:25–3:10</span><span class="tela">SLIDE 5 no telão · demo no iPad + protótipo</span>
+<p class="fala">Este é o nosso protótipo funcional: uma réplica em tamanho real do HCA G2, com um ESP32 dentro que simula a medição e conversa com o app em tempo real. <b>Acompanhem no iPad:</b> o motorista chegou na vaga, lê o QR Code, escolhe quanto quer carregar — 20 kWh — e a tarifa trava no momento do plug-in.</p>
+<div class="acao">🔌 B ENCAIXA o conector (SEMPRE antes de pagar!)</div>
+<p class="fala">Agora conectamos o cabo no carro — <b>olhem o poste: âmbar</b>, vaga ocupada. O pagamento: Pix com pré-autorização — pré-autorizamos o valor da meta e capturamos só os kWh entregues. Ou seja: <b>o motorista nunca paga pelo que não recebeu.</b> Carga liberada — <b>verde girando no W</b>.</p>
+<div class="acao">🔌 B DESENCAIXA no meio da carga</div>
+<p class="fala">E se o cabo cair no meio? <b>Vermelho</b>: carregamento interrompido — e a cobrança pausa junto. Reconectou… retomou.</p>
+<div class="acao">🔌 B REENCAIXA · esperar a meta (~10 s)</div>
+<p class="fala">Meta atingida — e reparem num detalhe: o poste fica <b>âmbar</b>, porque o cabo ainda está no carro. A vaga só volta a ficar disponível… <i>(B desencaixa)</i> agora. <b>Azul.</b> E o recibo, no iPad: captura parcial pelo Mercado Pago, com o split automático — 90% pra galeria, 10% pra plataforma.</p>
+</div>
+
+<div class="bloco"><span class="tempo">3:10–4:10</span><span class="tela">SLIDE 6 no telão · demo no iPad + protótipo</span>
+<p class="fala">Do outro lado, o gestor — o telão mostra o painel dele, e no iPad, ao vivo, a Previsão: dois Random Forest treinados — um para o prédio, outro para o eletroposto — com 96% de precisão, e um K-Means que classifica o perfil do dia. O Síndico Virtual transforma isso em decisão: pergunto "vale a pena ampliar a bateria?" e ele responde com os números do modelo — sempre com a justificativa legível, porque número sem razão vira desconfiança no preço. E o controle é real: desativo uma vaga no app… <b>e o poste apaga na frente de vocês.</b> Ativei — azul de novo. É o DLM protegendo a demanda contratada: 55 kW, menos o pico do prédio, menos a margem de segurança, repartido entre as vagas — sem nunca gerar multa.</p>
+<div class="acao">🖥 A: passa o SLIDE 7 (prospect) em ~3 s na frase "simula o retorno antes de contratar" e segue pro 8</div>
+</div>
+
+<div class="bloco"><span class="tempo">4:10–4:45</span><span class="tela">SLIDES 8→9→10→11 · flip de ~8 s cada durante a rajada</span>
+<p class="fala">Nossos diferenciais: integração completa GoodWe, do inversor ao Smart Home; tarifa dinâmica ajustada por IA sobre a base do gestor; load shifting preditivo; parceiros de eficiência energética, rumo às certificações LEED e AQUA; e a persona prospect, que simula o retorno antes de contratar — a venda começa no app.</p>
+</div>
+
+<div class="bloco"><span class="tempo">4:45–5:00</span><span class="tela">SLIDE 12 · obrigado</span>
+<p class="fala">Demanda gerenciada pelo DLM. Cobrança com pré-autorização e captura parcial. Recarga de ponta a ponta no hardware que vocês viram. Como eu disse no começo: <b>o sol virou o sócio do gestor.</b> Obrigado — estamos à disposição.</p>
+</div>
+
+<div class="atencao">⏱ <b>Cortes de emergência (nesta ordem):</b> slide 3 → demo do Gestor vira só a Previsão → diferenciais ficam só no slide 8. A demo do Motorista NUNCA se corta. · Sincronia: A troca os slides 8→11 acompanhando as frases da rajada (GoodWe/Smart Home → ecossistema/parceiros → dashboards de energia → financeiros).</div>
+
+<div class="ok">✅ <b>Setup antes de entrar:</b> carregador ON (rede nasce) · Mac na GoodWe-Demo · app da <b>Goodwe-versao-teste</b> aberto no Mac (reserva, caso o iPad falhe — ⌘Tab e segue) · servidor pro iPad: <code>cd Goodwe-versao-teste/app && python3 -m http.server 8123</code> · iPad em http://192.168.4.X:8123 JÁ CARREGADO (não dar F5 lá dentro) · PowerPoint aberto no slide 1 · Não Perturbe ON.</div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Escreva aqui as funções pedidas em DESAFIOS.md e rode: python3 testes.py
+
+def custo_recarga(kwh, tarifa_base, fator):
+    ...
+
+def teto_dlm(contratada_kw, pico_kw, margem_pct):
+    ...
+
+def repartir(teto_kw, n_vagas, max_vaga=7.0):
+    ...
+
+def captura_parcial(preautorizado, kwh_entregues, tarifa):
+    ...
+
+def economia_load_shifting(consumo_ponta_kwh, tarifa_ponta, tarifa_fora, capacidade_bateria_kwh):
+    ...
+
+def classificar_demanda(kw, teto_kw):
+    ...
